@@ -1,18 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import logo from '../../assets/Logo.png'
 import { Search, User, ShoppingCart, Menu, X } from 'lucide-react'
 import { cartEvents, getCartCount } from '../../lib/cart'
 import { getJson } from '../../lib/api'
-
-const fallbackCategories = [
-    { id: 'fallback-1', title: 'Sapatilhas' },
-    { id: 'fallback-2', title: 'Roupa' },
-    { id: 'fallback-3', title: 'Relogios GPS' },
-    { id: 'fallback-4', title: 'Equipamento de Corrida' },
-    { id: 'fallback-5', title: 'Nutricao Desportiva' },
-    { id: 'fallback-6', title: 'Hyrox' },
-]
 
 function buildCategoryLink(category, index) {
     const categoryId = category?.id != null ? String(category.id) : `category-${index}`
@@ -72,10 +63,6 @@ const Navbar = () => {
         }
     }, [])
 
-    const navCategories = useMemo(() => {
-        return categories.length > 0 ? categories : fallbackCategories.map(buildCategoryLink)
-    }, [categories])
-
     return (
         <>
             <header>
@@ -113,7 +100,7 @@ const Navbar = () => {
                         </button>
                     </div>
                     <div className='hidden md:flex flex-wrap justify-center gap-x-8 gap-y-3 py-6 border-t border-gray-300 px-6'>
-                        {navCategories.map((category) => (
+                        {categories.map((category) => (
                             <Link key={category.id} to={category.to} className='focus:text-red-500 whitespace-nowrap'>
                                 {category.title}
                             </Link>
@@ -144,7 +131,7 @@ const Navbar = () => {
                                     Categorias
                                 </summary>
                                 <div className='mt-3 flex flex-col gap-3'>
-                                    {navCategories.map((category) => (
+                                    {categories.map((category) => (
                                         <Link key={category.id} to={category.to} onClick={() => setOpen(false)}>
                                             {category.title}
                                         </Link>
