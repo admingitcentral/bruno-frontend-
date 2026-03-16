@@ -122,6 +122,15 @@ function extractColorFromAttributes(attributes) {
   return String(found?.[1] || '').trim()
 }
 
+function extractSizeFromAttributes(attributes) {
+  const entries = Object.entries(attributes || {})
+  const found = entries.find(([key]) => {
+    const normalizedKey = normalizeText(key)
+    return normalizedKey.includes('size') || normalizedKey.includes('tamanho')
+  })
+  return String(found?.[1] || '').trim()
+}
+
 function mapProductForDetails(product, index = 0) {
   const variants = Array.isArray(product?.variants) ? product.variants : []
   const imageOptions = Array.isArray(product?.images)
@@ -139,13 +148,17 @@ function mapProductForDetails(product, index = 0) {
   const variantOptions = variants.map((variant) => {
     const attrs = parseAttributes(variant?.attribute_values)
     const colorLabel = extractColorFromAttributes(attrs)
+    const sizeLabel = extractSizeFromAttributes(attrs)
     return {
       id: variant?.id != null ? String(variant.id) : null,
+      sku: variant?.sku || product?.sku || null,
       isActive: variant?.is_active !== false,
       price: toNumber(variant?.price ?? product?.base_price, 0),
       compareAt: toNumber(variant?.compare_at_price, 0),
       colorLabel,
       colorId: resolveColorId(colorLabel),
+      sizeLabel,
+      attributes: attrs,
     }
   })
 
@@ -166,6 +179,13 @@ function mapProductForDetails(product, index = 0) {
   const visibleColors = swatchesWithAvailability.filter((swatch) => swatch.available)
   const fallbackColor =
     swatchesWithAvailability.find((swatch) => swatch.id === defaultColorId) || swatchesWithAvailability[0]
+  const visibleSizes = Array.from(
+    new Set(
+      variantOptions
+        .map((variant) => String(variant.sizeLabel || '').trim())
+        .filter(Boolean)
+    )
+  )
 
   return {
     id: String(product?.id || `fallback-${index}`),
@@ -184,7 +204,9 @@ function mapProductForDetails(product, index = 0) {
     imageOptions,
     variantOptions,
     defaultColorId,
+    defaultSize: visibleSizes[0] || '',
     colors: visibleColors.length > 0 ? visibleColors : fallbackColor ? [fallbackColor] : [],
+    sizes: visibleSizes,
     cardColor: COLOR_SWATCHES.find((swatch) => swatch.id === defaultColorId)?.label || 'Cor disponivel',
     image: pickImageByColor(imageOptions, defaultColorId) || images[0] || productImage,
   }
@@ -194,6 +216,7 @@ function ProductDetailsPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [selectedColor, setSelectedColor] = useState('')
+  const [selectedSize, setSelectedSize] = useState('')
   const [quantity, setQuantity] = useState(1)
   const [product, setProduct] = useState(null)
   const [recommended, setRecommended] = useState([])
@@ -274,13 +297,48 @@ function ProductDetailsPage() {
         product.colors[0]?.id ||
         ''
     )
+    setSelectedSize(product.defaultSize || '')
     setQuantity(1)
   }, [product])
 
+  const availableSizes = useMemo(() => {
+    if (!product) return []
+    const matchingColorVariants = product.variantOptions.filter((entry) => {
+      if (!selectedColor) return true
+      return !entry.colorId || entry.colorId === selectedColor
+    })
+    const sizes = Array.from(
+      new Set(
+        matchingColorVariants
+          .map((entry) => String(entry.sizeLabel || '').trim())
+          .filter(Boolean)
+      )
+    )
+    return sizes.length > 0 ? sizes : product.sizes || []
+  }, [product, selectedColor])
+
+  useEffect(() => {
+    if (!availableSizes.length) {
+      setSelectedSize('')
+      return
+    }
+    if (!selectedSize || !availableSizes.includes(selectedSize)) {
+      setSelectedSize(availableSizes[0])
+    }
+  }, [availableSizes, selectedSize])
+
   const selectedVariant = useMemo(() => {
     if (!product) return null
-    return product.variantOptions.find((entry) => entry.colorId === selectedColor) || null
-  }, [product, selectedColor])
+    return (
+      product.variantOptions.find((entry) => {
+        const matchesColor = !selectedColor || !entry.colorId || entry.colorId === selectedColor
+        const matchesSize = !selectedSize || !entry.sizeLabel || entry.sizeLabel === selectedSize
+        return matchesColor && matchesSize
+      }) ||
+      product.variantOptions.find((entry) => !selectedColor || !entry.colorId || entry.colorId === selectedColor) ||
+      null
+    )
+  }, [product, selectedColor, selectedSize])
 
   const selectedColorEntry = useMemo(
     () => (product?.colors || COLOR_SWATCHES).find((entry) => entry.id === selectedColor) || null,
@@ -300,13 +358,19 @@ function ProductDetailsPage() {
   const handleAddToCart = () => {
     if (!product) return
     addCartItem({
-      id: `${product.id}:${selectedColor || 'default'}`,
+      id: `${product.id}:${selectedVariant?.id || selectedColor || 'default'}:${selectedSize || 'default'}`,
       productId: product.id,
       variantId: selectedVariant?.id || product.primaryVariantId,
       categoryId: product.categoryId,
-      sku: product.sku,
+      sku: selectedVariant?.sku || product.sku,
       name: product.title,
       color: selectedColorEntry?.label || 'Cor disponivel',
+      size: selectedSize || null,
+      selectedOptions: {
+        ...(selectedVariant?.attributes || {}),
+        color: selectedColorEntry?.label || 'Cor disponivel',
+        size: selectedSize || null,
+      },
       qty: quantity,
       unitPrice: Number(activePrice || 0),
       image: selectedImage || product.images?.[0] || productImage,
@@ -342,14 +406,20 @@ function ProductDetailsPage() {
                 <button className='text-[11px] text-black/60'>Guia de Tamanhos</button>
               </div>
               <div className='mt-3 grid grid-cols-6 gap-2 text-[11px]'>
-                {['36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46', '47'].map((size) => (
-                  <button
-                    key={size}
-                    className='border border-black/10 py-2 focus:bg-black focus:text-white focus:border-black'
-                  >
-                    {size}
-                  </button>
-                ))}
+                {availableSizes.length > 0 ? (
+                  availableSizes.map((size) => (
+                    <button
+                      key={size}
+                      type='button'
+                      onClick={() => setSelectedSize(size)}
+                      className={`border py-2 ${selectedSize === size ? 'border-black bg-black text-white' : 'border-black/10 focus:bg-black focus:text-white focus:border-black'}`}
+                    >
+                      {size}
+                    </button>
+                  ))
+                ) : (
+                  <p className='col-span-6 text-[12px] text-black/50'>Sem tamanhos disponiveis para este produto.</p>
+                )}
               </div>
             </div>
 

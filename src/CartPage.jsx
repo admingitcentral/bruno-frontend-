@@ -169,7 +169,9 @@ const CartPage = () => {
 
                     <div className='grid gap-1.5 min-w-0'>
                       <h2 className='m-0 text-[13px] font-normal text-[#202020] leading-[1.3]'>{item.name}</h2>
-                      <p className='m-0 text-[12px] text-[#9aa3af]'>{item.color || 'Cor disponivel'}</p>
+                      <p className='m-0 text-[12px] text-[#9aa3af]'>
+                        {[item.color || 'Cor disponivel', item.size].filter(Boolean).join(' | ')}
+                      </p>
                     </div>
 
                     <div className='flex items-center gap-[14px]'>

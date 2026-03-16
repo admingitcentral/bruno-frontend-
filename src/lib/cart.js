@@ -40,6 +40,11 @@ function normalizeCartItem(raw) {
     sku: raw.sku != null && String(raw.sku).trim() ? String(raw.sku) : null,
     name,
     color: String(raw.color || 'Cor disponivel'),
+    size: raw.size != null && String(raw.size).trim() ? String(raw.size) : null,
+    selectedOptions:
+      raw.selectedOptions && typeof raw.selectedOptions === 'object' && !Array.isArray(raw.selectedOptions)
+        ? raw.selectedOptions
+        : {},
     qty: Math.max(1, Math.floor(qty)),
     unitPrice,
     image,

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import 'swiper/css'
 import 'swiper/css/pagination'
@@ -10,8 +10,51 @@ import StoreCard from './components/ui/StoreCard'
 import StoreFaro from './assets/Faro.png'
 import StoreLisboa from './assets/Lisboa.png'
 import StoreMatosinhos from './assets/Matosinhos.png'
+import { getJson, resolveAssetUrl } from './lib/api'
+
+const fallbackStores = [
+  { id: 'faro', name: 'Loja de Faro', image: StoreFaro },
+  { id: 'lisboa', name: 'Loja de Lisboa', image: StoreLisboa },
+  { id: 'matosinhos', name: 'Loja de Matosinhos', image: StoreMatosinhos },
+]
 
 const ContactPage = () => {
+  const [stores, setStores] = useState(fallbackStores)
+
+  useEffect(() => {
+    let active = true
+    const controller = new AbortController()
+
+    const loadStores = async () => {
+      try {
+        const result = await getJson('/api/stores', { signal: controller.signal })
+        if (!active || !Array.isArray(result)) return
+
+        const mappedStores = result
+          .filter((store) => store?.is_active !== false)
+          .slice(0, 3)
+          .map((store, index) => ({
+            id: store?.id || `store-${index}`,
+            name: store?.name || 'Loja',
+            image: resolveAssetUrl(store?.image_url || '') || fallbackStores[index % fallbackStores.length].image,
+          }))
+
+        if (mappedStores.length > 0) {
+          setStores(mappedStores)
+        }
+      } catch (error) {
+        if (!active || error?.name === 'AbortError') return
+      }
+    }
+
+    void loadStores()
+
+    return () => {
+      active = false
+      controller.abort()
+    }
+  }, [])
+
   return (
     <>
       <Navbar />
@@ -94,38 +137,34 @@ const ContactPage = () => {
         </section>
 
         <section className='mx-auto max-w-[1366px] px-5 sm:px-8 lg:px-[42px] py-[40px] sm:py-[55px] lg:py-[70px] text-center border-t border-[#d9d9d9]'>
-  <h2 className='m-0 text-[28px] sm:text-[32px] leading-[1.04] font-normal text-[#262626]'>
-    Estamos perto de ti
-  </h2>
-  <p className='m-0 mt-3 text-[14px] sm:text-[16px] leading-[1.5] tracking-[0.04em] text-[#333]'>
-Visita-nos numa das nossas lojas físicas e recebe aconselhamento especializado.
-  </p>
-  <div className='mt-6 md:hidden'>
-    <Swiper
-      slidesPerView={1}
-      spaceBetween={12}
-      pagination={{ clickable: true }}
-      navigation={true}
-      modules={[Pagination, Navigation]}
-      className='mySwiper'
-    >
-      <SwiperSlide className='py-2'>
-        <StoreCard image={StoreFaro} title='Loja de Faro' />
-      </SwiperSlide>
-      <SwiperSlide  className='py-2'>
-        <StoreCard image={StoreLisboa} title='Loja de Lisboa' />
-      </SwiperSlide>
-      <SwiperSlide  className='py-2'>
-        <StoreCard image={StoreMatosinhos} title='Loja de Matosinhos' />
-      </SwiperSlide>
-    </Swiper>
-  </div>
-  <div className='mt-6 hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3'>
-    <StoreCard image={StoreFaro} title='Loja de Faro' />
-    <StoreCard image={StoreLisboa} title='Loja de Lisboa' />
-    <StoreCard image={StoreMatosinhos} title='Loja de Matosinhos' />
-  </div>
-</section>
+          <h2 className='m-0 text-[28px] sm:text-[32px] leading-[1.04] font-normal text-[#262626]'>
+            Estamos perto de ti
+          </h2>
+          <p className='m-0 mt-3 text-[14px] sm:text-[16px] leading-[1.5] tracking-[0.04em] text-[#333]'>
+            Visita-nos numa das nossas lojas fisicas e recebe aconselhamento especializado.
+          </p>
+          <div className='mt-6 md:hidden'>
+            <Swiper
+              slidesPerView={1}
+              spaceBetween={12}
+              pagination={{ clickable: true }}
+              navigation={true}
+              modules={[Pagination, Navigation]}
+              className='mySwiper'
+            >
+              {stores.map((store) => (
+                <SwiperSlide key={`store-mobile-${store.id}`} className='py-2'>
+                  <StoreCard image={store.image} title={store.name} />
+                </SwiperSlide>
+              ))}
+            </Swiper>
+          </div>
+          <div className='mt-6 hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3'>
+            {stores.map((store) => (
+              <StoreCard key={`store-desktop-${store.id}`} image={store.image} title={store.name} />
+            ))}
+          </div>
+        </section>
       </main>
 
       <Footer />

@@ -108,6 +108,11 @@ const CheckoutPage = () => {
           unit_price: Number(item.unitPrice || 0),
           product_id: item.productId || null,
           variant_id: item.variantId || null,
+          selected_options: {
+            ...(item.selectedOptions || {}),
+            color: item.color || null,
+            size: item.size || null,
+          },
         })),
       })
 
@@ -154,6 +159,9 @@ const CheckoutPage = () => {
             qty: Number(item.qty || 0),
             unitPrice: Number(item.unitPrice || 0),
             image: item.image || null,
+            color: item.color || null,
+            size: item.size || null,
+            selectedOptions: item.selectedOptions || {},
           })),
         })
       )
@@ -351,7 +359,7 @@ const CheckoutPage = () => {
                     <div>
                       <p className='m-0 text-[16px] text-[#111]'>{item.name}</p>
                       <p className='m-0 text-[14px] text-[#8b93a7]'>
-                        {item.color || 'Cor disponivel'} | Qtd: {item.qty}
+                        {[item.color || 'Cor disponivel', item.size].filter(Boolean).join(' | ')} | Qtd: {item.qty}
                       </p>
                     </div>
                   </div>
