@@ -11,13 +11,19 @@ const Reports = () => {
   const [schedules, setSchedules] = useState([]);
   const [form, setForm] = useState({ store_id: "", send_time_utc: "09:00", recipient_email: "" });
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
   const load = async () => {
-    const [storeRows, scheduleRows] = await Promise.all([
-      adminApi.listStores(),
-      adminApi.listReportSchedules()
-    ]);
-    setStores(storeRows);
-    setSchedules(scheduleRows);
+    try {
+      setError("");
+      const [storeRows, scheduleRows] = await Promise.all([
+        adminApi.listStores(),
+        adminApi.listReportSchedules()
+      ]);
+      setStores(storeRows);
+      setSchedules(scheduleRows);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Falha ao carregar relatorios");
+    }
   };
   useEffect(() => {
     void load();
@@ -29,6 +35,7 @@ const Reports = () => {
   />
 
       {message ? <p className='text-sm'>{message}</p> : null}
+      {error ? <p className='text-sm text-red-600'>{error}</p> : null}
 
       <Card className='rounded-[28px] bg-zinc-100'>
         <CardHeader>
@@ -59,13 +66,26 @@ const Reports = () => {
   />
           <Button
     className='!h-12 !rounded-xl !bg-black !text-white hover:!bg-black/90'
-    onClick={() => void adminApi.createReportSchedule({
-      store_id: Number(form.store_id),
-      send_time_utc: form.send_time_utc,
-      recipient_email: form.recipient_email,
-      report_type: "pending_orders",
-      is_active: true
-    }).then(() => load()).then(() => setForm({ store_id: "", send_time_utc: "09:00", recipient_email: "" })).then(() => setMessage("Agendamento guardado"))}
+    onClick={() => {
+      if (!form.store_id || !form.send_time_utc || !form.recipient_email) {
+        setError("Loja, hora e email sao obrigatorios.");
+        setMessage("");
+        return;
+      }
+      void adminApi.createReportSchedule({
+        store_id: form.store_id,
+        send_time_utc: form.send_time_utc.trim(),
+        recipient_email: form.recipient_email.trim(),
+        report_type: "pending_orders",
+        is_active: true
+      }).then(() => load()).then(() => setForm({ store_id: "", send_time_utc: "09:00", recipient_email: "" })).then(() => {
+        setError("");
+        setMessage("Agendamento guardado");
+      }).catch((e) => {
+        setMessage("");
+        setError(e instanceof Error ? e.message : "Falha ao guardar agendamento");
+      });
+    }}
   >
             Guardar
           </Button>
@@ -98,7 +118,13 @@ const Reports = () => {
                   <TableCell>{schedule.recipient_email}</TableCell>
                   <TableCell>{schedule.last_sent_date || "-"}</TableCell>
                   <TableCell className='flex gap-2'>
-                    <Button className='!h-10 !rounded-md !bg-zinc-400 !px-6 !text-white hover:!bg-zinc-500' size='sm' onClick={() => void adminApi.runReportsNow(schedule.id).then(() => setMessage(`Agendamento ${schedule.id} executado`))}>
+                    <Button className='!h-10 !rounded-md !bg-zinc-400 !px-6 !text-white hover:!bg-zinc-500' size='sm' onClick={() => void adminApi.runReportsNow(schedule.id).then(() => {
+      setError("");
+      setMessage(`Agendamento ${schedule.id} executado`);
+    }).catch((e) => {
+      setMessage("");
+      setError(e instanceof Error ? e.message : "Falha ao executar relatorio");
+    })}>
                       Executar
                     </Button>
                     <ConfirmDeleteButton
