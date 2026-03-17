@@ -7,13 +7,22 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { adminApi } from "@/lib/adminApi";
 
-const initialForm = { store_id: "", send_time_utc: "09:00", recipient_email: "" };
+function getCurrentUtcTime() {
+  const now = new Date();
+  const hours = String(now.getUTCHours()).padStart(2, "0");
+  const minutes = String(now.getUTCMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
+
+function createInitialForm() {
+  return { store_id: "", send_time_utc: getCurrentUtcTime(), recipient_email: "" };
+}
 
 function Reports() {
   const [stores, setStores] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [reportStatus, setReportStatus] = useState(null);
-  const [form, setForm] = useState(initialForm);
+  const [form, setForm] = useState(createInitialForm);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -65,7 +74,7 @@ function Reports() {
         is_active: true,
       });
       await load();
-      setForm(initialForm);
+      setForm(createInitialForm());
       setMessage("Agendamento guardado. O email recebera o relatorio e a analitica da loja.");
     } catch (e) {
       setMessage("");
@@ -80,9 +89,16 @@ function Reports() {
       setRunningId(scheduleId);
       setError("");
       setMessage("");
-      await adminApi.runReportsNow(scheduleId);
+      const result = await adminApi.runReportsNow(scheduleId);
       await load();
-      setMessage(`Relatorio ${scheduleId} executado. Verifique o email configurado.`);
+      const delivery = Array.isArray(result?.deliveries) ? result.deliveries[0] : null;
+      if (delivery?.recipient_email) {
+        setMessage(
+          `Relatorio ${scheduleId} executado para ${delivery.recipient_email} (${delivery.store_name || "store"}).`
+        );
+      } else {
+        setMessage(`Relatorio ${scheduleId} executado. Verifique o email configurado.`);
+      }
     } catch (e) {
       setMessage("");
       setError(e instanceof Error ? e.message : "Falha ao executar relatorio");
