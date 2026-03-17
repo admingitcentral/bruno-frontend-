@@ -7,15 +7,49 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { adminApi } from "@/lib/adminApi";
 
-function getCurrentUtcTime() {
+function getCurrentLocalTime() {
   const now = new Date();
-  const hours = String(now.getUTCHours()).padStart(2, "0");
-  const minutes = String(now.getUTCMinutes()).padStart(2, "0");
+  const hours = String(now.getHours()).padStart(2, "0");
+  const minutes = String(now.getMinutes()).padStart(2, "0");
   return `${hours}:${minutes}`;
 }
 
+function getBrowserTimeZone() {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+}
+
+function localTimeToUtc(timeValue) {
+  const value = String(timeValue || "").trim();
+  if (!/^\d{2}:\d{2}$/.test(value)) return value;
+  const [hours, minutes] = value.split(":").map(Number);
+  const localDate = new Date();
+  localDate.setHours(hours, minutes, 0, 0);
+  const utcHours = String(localDate.getUTCHours()).padStart(2, "0");
+  const utcMinutes = String(localDate.getUTCMinutes()).padStart(2, "0");
+  return `${utcHours}:${utcMinutes}`;
+}
+
+function utcTimeToLocal(timeValue) {
+  const value = String(timeValue || "").trim();
+  if (!/^\d{2}:\d{2}$/.test(value)) return value;
+  const [hours, minutes] = value.split(":").map(Number);
+  const utcDate = new Date();
+  utcDate.setUTCHours(hours, minutes, 0, 0);
+  const localHours = String(utcDate.getHours()).padStart(2, "0");
+  const localMinutes = String(utcDate.getMinutes()).padStart(2, "0");
+  return `${localHours}:${localMinutes}`;
+}
+
+function utcDateTimeToLocal(value) {
+  const text = String(value || "").trim();
+  if (!text) return "-";
+  const parsed = new Date(`${text.replace(" ", "T")}Z`);
+  if (Number.isNaN(parsed.getTime())) return text;
+  return parsed.toLocaleString();
+}
+
 function createInitialForm() {
-  return { store_id: "", send_time_utc: getCurrentUtcTime(), recipient_email: "" };
+  return { store_id: "", send_time_local: getCurrentLocalTime(), recipient_email: "" };
 }
 
 function Reports() {
@@ -23,6 +57,7 @@ function Reports() {
   const [schedules, setSchedules] = useState([]);
   const [reportStatus, setReportStatus] = useState(null);
   const [form, setForm] = useState(createInitialForm);
+  const [browserTimeZone] = useState(getBrowserTimeZone);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -56,9 +91,9 @@ function Reports() {
   }, []);
 
   const handleCreate = async () => {
-    if (!form.store_id || !form.send_time_utc || !form.recipient_email) {
+    if (!form.store_id || !form.send_time_local || !form.recipient_email) {
       setMessage("");
-      setError("Loja, hora UTC e email sao obrigatorios.");
+      setError("Loja, hora local e email sao obrigatorios.");
       return;
     }
 
@@ -68,7 +103,7 @@ function Reports() {
       setMessage("");
       await adminApi.createReportSchedule({
         store_id: form.store_id,
-        send_time_utc: form.send_time_utc.trim(),
+        send_time_utc: localTimeToUtc(form.send_time_local),
         recipient_email: form.recipient_email.trim(),
         report_type: "pending_orders",
         is_active: true,
@@ -142,9 +177,9 @@ function Reports() {
 
           <Input
             className="h-12 rounded-xl border-slate-400/60 focus:border-slate-500 focus:ring-0"
-            placeholder="HH:MM (UTC)"
-            value={form.send_time_utc}
-            onChange={(e) => setForm((prev) => ({ ...prev, send_time_utc: e.target.value }))}
+            placeholder={`HH:MM (${browserTimeZone})`}
+            value={form.send_time_local}
+            onChange={(e) => setForm((prev) => ({ ...prev, send_time_local: e.target.value }))}
           />
 
           <Input
@@ -161,6 +196,9 @@ function Reports() {
           >
             {saving ? "Saving..." : "Keep"}
           </Button>
+          <p className="md:col-span-4 -mt-2 text-xs text-black/60">
+            Scheduling uses your local timezone: {browserTimeZone}. The backend stores it in UTC automatically.
+          </p>
         </CardContent>
       </Card>
 
@@ -191,10 +229,10 @@ function Reports() {
                 <TableHead>ID</TableHead>
                 <TableHead>Store</TableHead>
                 <TableHead>Type</TableHead>
-                <TableHead>Hour UTC</TableHead>
+                <TableHead>Hour ({browserTimeZone})</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Next run UTC</TableHead>
+                <TableHead>Next run ({browserTimeZone})</TableHead>
                 <TableHead>Last submission</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -218,10 +256,10 @@ function Reports() {
                     <TableCell>{schedule.id}</TableCell>
                     <TableCell>{schedule.store_name}</TableCell>
                     <TableCell>{schedule.report_type}</TableCell>
-                    <TableCell>{schedule.send_time_utc}</TableCell>
+                    <TableCell>{utcTimeToLocal(schedule.send_time_utc)}</TableCell>
                     <TableCell>{schedule.recipient_email}</TableCell>
                     <TableCell>{schedule.is_active ? "Active" : "Inactive"}</TableCell>
-                    <TableCell>{schedule.next_run_utc || "-"}</TableCell>
+                    <TableCell>{utcDateTimeToLocal(schedule.next_run_utc)}</TableCell>
                     <TableCell>{schedule.last_sent_date || "-"}</TableCell>
                     <TableCell className="flex gap-2">
                       <Button
