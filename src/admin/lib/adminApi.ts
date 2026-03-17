@@ -62,6 +62,7 @@ export const adminApi = {
     putJson(`/api/shipping/orders/${orderId}/status`, payload),
 
   listReportSchedules: () => getJson('/api/reports/schedules'),
+  getReportStatus: () => getJson('/api/reports/status'),
   createReportSchedule: (payload: unknown) => postJson('/api/reports/schedules', payload),
   updateReportSchedule: (id: number, payload: unknown) => putJson(`/api/reports/schedules/${id}`, payload),
   deleteReportSchedule: (id: number) => deleteJson(`/api/reports/schedules/${id}`),

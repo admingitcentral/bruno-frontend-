@@ -12,6 +12,7 @@ const initialForm = { store_id: "", send_time_utc: "09:00", recipient_email: "" 
 function Reports() {
   const [stores, setStores] = useState([]);
   const [schedules, setSchedules] = useState([]);
+  const [reportStatus, setReportStatus] = useState(null);
   const [form, setForm] = useState(initialForm);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -27,12 +28,15 @@ function Reports() {
         adminApi.listStores(),
         adminApi.listReportSchedules(),
       ]);
+      const status = await adminApi.getReportStatus();
       setStores(Array.isArray(storeRows) ? storeRows : []);
       setSchedules(Array.isArray(scheduleRows) ? scheduleRows : []);
+      setReportStatus(status && typeof status === "object" ? status : null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Falha ao carregar relatorios");
       setStores([]);
       setSchedules([]);
+      setReportStatus(null);
     } finally {
       setLoading(false);
     }
@@ -78,7 +82,7 @@ function Reports() {
       setMessage("");
       await adminApi.runReportsNow(scheduleId);
       await load();
-      setMessage(`Relatorio ${scheduleId} executado e enviado para o email configurado.`);
+      setMessage(`Relatorio ${scheduleId} executado. Verifique o email configurado.`);
     } catch (e) {
       setMessage("");
       setError(e instanceof Error ? e.message : "Falha ao executar relatorio");
@@ -96,6 +100,11 @@ function Reports() {
 
       {message ? <p className="text-sm text-emerald-700">{message}</p> : null}
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {reportStatus && !reportStatus.email_configured ? (
+        <p className="text-sm text-amber-700">
+          Email delivery is not configured in the backend. Set `EMAIL_USER` and `EMAIL_PASS` in the backend `.env`.
+        </p>
+      ) : null}
 
       <Card className="rounded-[28px] bg-zinc-100">
         <CardHeader>
@@ -144,6 +153,22 @@ function Reports() {
           <CardTitle>Report scheduling</CardTitle>
         </CardHeader>
         <CardContent>
+          {reportStatus ? (
+            <div className="mb-4 grid gap-3 md:grid-cols-3">
+              <div className="rounded-xl bg-white px-4 py-3 text-sm">
+                <p className="text-black/55">Email delivery</p>
+                <p className="font-semibold">{reportStatus.email_configured ? "Configured" : "Missing config"}</p>
+              </div>
+              <div className="rounded-xl bg-white px-4 py-3 text-sm">
+                <p className="text-black/55">Active schedules</p>
+                <p className="font-semibold">{reportStatus.schedules_active ?? 0}</p>
+              </div>
+              <div className="rounded-xl bg-white px-4 py-3 text-sm">
+                <p className="text-black/55">Sender</p>
+                <p className="font-semibold break-all">{reportStatus.email_from || "-"}</p>
+              </div>
+            </div>
+          ) : null}
           <Table>
             <TableHeader>
               <TableRow>
