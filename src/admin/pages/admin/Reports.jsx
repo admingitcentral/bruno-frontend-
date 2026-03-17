@@ -51,9 +51,15 @@ function utcDateTimeToLocal(value) {
 function formatLastSubmission(value) {
   const text = String(value || "").trim();
   if (!text) return "-";
-  const parsed = new Date(text);
+  const parsed = /^\d{4}-\d{2}-\d{2}$/.test(text) ? new Date(`${text}T00:00:00`) : new Date(text);
   if (Number.isNaN(parsed.getTime())) return text;
-  return parsed.toLocaleString();
+  return parsed.toLocaleString([], {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function createInitialForm() {
@@ -268,7 +274,7 @@ function Reports() {
                     <TableCell>{schedule.recipient_email}</TableCell>
                     <TableCell>{schedule.is_active ? "Active" : "Inactive"}</TableCell>
                     <TableCell>{utcDateTimeToLocal(schedule.next_run_utc)}</TableCell>
-                    <TableCell>{formatLastSubmission(schedule.last_sent_date)}</TableCell>
+                    <TableCell>{formatLastSubmission(schedule.last_sent_at || schedule.last_sent_date)}</TableCell>
                     <TableCell className="flex gap-2">
                       <Button
                         className="!h-10 !rounded-md !bg-zinc-400 !px-6 !text-white hover:!bg-zinc-500"
