@@ -91,6 +91,11 @@ export const adminApi = {
 
   requestCustomerPasswordReset: (email: string) => postJson('/api/auth/forgot-password/request', { email }),
   deactivateCustomerAccount: (email: string) => postJson('/api/auth/customers/deactivate', { email }),
+  getAdminTwoFactorStatus: () => getJson('/api/auth/admin/2fa'),
+  setupAdminTwoFactor: (payload: { current_password: string }) => postJson('/api/auth/admin/2fa/setup', payload),
+  enableAdminTwoFactor: (payload: { totp_code: string }) => postJson('/api/auth/admin/2fa/enable', payload),
+  disableAdminTwoFactor: (payload: { current_password: string; totp_code: string }) =>
+    postJson('/api/auth/admin/2fa/disable', payload),
   changeAdminPassword: (payload: { email: string; current_password: string; new_password: string }) =>
     postJson('/api/auth/change-password', payload),
 };

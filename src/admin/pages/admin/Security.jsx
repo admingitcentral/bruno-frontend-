@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/admin/components/admin/PageHeader";
 import { StatusBadge } from "@/components/admin/StatusBadge";
@@ -21,6 +21,11 @@ function formatLoginDate(value) {
   }).format(date);
 }
 
+function buildQrUrl(value) {
+  if (!value) return "";
+  return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(value)}`;
+}
+
 export default function Security() {
   const navigate = useNavigate();
   const { logout } = useAdminAuth();
@@ -35,6 +40,18 @@ export default function Security() {
   const [passwordError, setPasswordError] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
+
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [twoFactorLoading, setTwoFactorLoading] = useState(true);
+  const [twoFactorSecret, setTwoFactorSecret] = useState("");
+  const [twoFactorOtpAuthUrl, setTwoFactorOtpAuthUrl] = useState("");
+  const [twoFactorCode, setTwoFactorCode] = useState("");
+  const [twoFactorError, setTwoFactorError] = useState("");
+  const [twoFactorSuccess, setTwoFactorSuccess] = useState("");
+  const [settingUpTwoFactor, setSettingUpTwoFactor] = useState(false);
+  const [disablingTwoFactor, setDisablingTwoFactor] = useState(false);
+
+  const qrUrl = useMemo(() => buildQrUrl(twoFactorOtpAuthUrl), [twoFactorOtpAuthUrl]);
 
   const loadLoginActivity = async () => {
     try {
@@ -51,10 +68,24 @@ export default function Security() {
     }
   };
 
+  const loadTwoFactorStatus = async () => {
+    try {
+      setTwoFactorLoading(true);
+      setTwoFactorError("");
+      const result = await adminApi.getAdminTwoFactorStatus();
+      setTwoFactorEnabled(Boolean(result?.enabled));
+    } catch (e) {
+      setTwoFactorError(e instanceof Error ? e.message : "Falha ao carregar estado de 2FA");
+      setTwoFactorEnabled(false);
+    } finally {
+      setTwoFactorLoading(false);
+    }
+  };
+
   useEffect(() => {
     void loadLoginActivity();
+    void loadTwoFactorStatus();
 
-    // Try to prefill email from storage if available.
     if (typeof window !== "undefined") {
       const storedEmail = window.localStorage.getItem("admin:email") || window.sessionStorage.getItem("admin:email");
       if (storedEmail && storedEmail.includes("@")) {
@@ -96,11 +127,84 @@ export default function Security() {
     }
   };
 
+  const handleToggleTwoFactor = async (checked) => {
+    setTwoFactorError("");
+    setTwoFactorSuccess("");
+
+    if (checked) {
+      if (!currentPassword.trim()) {
+        setTwoFactorError("Introduza a palavra-passe atual para iniciar o 2FA.");
+        return;
+      }
+      try {
+        setSettingUpTwoFactor(true);
+        const result = await adminApi.setupAdminTwoFactor({
+          current_password: currentPassword,
+        });
+        setTwoFactorSecret(String(result?.secret || ""));
+        setTwoFactorOtpAuthUrl(String(result?.otpauth_url || ""));
+        setTwoFactorSuccess("Abra o Google Authenticator, adicione a chave e confirme com o codigo de 6 digitos.");
+      } catch (e) {
+        setTwoFactorError(e instanceof Error ? e.message : "Falha ao iniciar a configuracao do 2FA.");
+      } finally {
+        setSettingUpTwoFactor(false);
+      }
+      return;
+    }
+
+    if (!currentPassword.trim()) {
+      setTwoFactorError("Introduza a palavra-passe atual para desativar o 2FA.");
+      return;
+    }
+    if (twoFactorCode.trim().length !== 6) {
+      setTwoFactorError("Introduza o codigo atual de 6 digitos para desativar o 2FA.");
+      return;
+    }
+
+    try {
+      setDisablingTwoFactor(true);
+      await adminApi.disableAdminTwoFactor({
+        current_password: currentPassword,
+        totp_code: twoFactorCode.trim(),
+      });
+      setTwoFactorEnabled(false);
+      setTwoFactorSecret("");
+      setTwoFactorOtpAuthUrl("");
+      setTwoFactorCode("");
+      setTwoFactorSuccess("Two-factor authentication disabled.");
+    } catch (e) {
+      setTwoFactorError(e instanceof Error ? e.message : "Falha ao desativar o 2FA.");
+    } finally {
+      setDisablingTwoFactor(false);
+    }
+  };
+
+  const handleConfirmTwoFactor = async () => {
+    if (twoFactorCode.trim().length !== 6) {
+      setTwoFactorError("Introduza o codigo de 6 digitos do Google Authenticator.");
+      return;
+    }
+
+    try {
+      setSettingUpTwoFactor(true);
+      await adminApi.enableAdminTwoFactor({ totp_code: twoFactorCode.trim() });
+      setTwoFactorEnabled(true);
+      setTwoFactorSecret("");
+      setTwoFactorOtpAuthUrl("");
+      setTwoFactorCode("");
+      setTwoFactorSuccess("Two-factor authentication enabled.");
+    } catch (e) {
+      setTwoFactorError(e instanceof Error ? e.message : "Falha ao confirmar o 2FA.");
+    } finally {
+      setSettingUpTwoFactor(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <PageHeader
-        title="Segurança do Admin"
-        description="Gira autenticação, sessões e controlos de acesso."
+        title="Seguranca do Admin"
+        description="Gira autenticacao, sessoes e controlos de acesso."
         actions={
           <Button
             className="!h-10 !w-28 !justify-center !rounded-md !bg-black !text-white hover:!bg-black/90"
@@ -144,12 +248,16 @@ export default function Security() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Tempo de sessão</label>
+              <label className="text-sm font-medium">Tempo de sessao</label>
               <Input placeholder="30 minutos" value={sessionTime} onChange={(e) => setSessionTime(e.target.value)} />
             </div>
             {passwordError ? <p className="text-sm text-destructive">{passwordError}</p> : null}
             {passwordSuccess ? <p className="text-sm text-emerald-600">{passwordSuccess}</p> : null}
-            <Button className="!h-10 !w-56 !justify-center !rounded-md !bg-black !text-white hover:!bg-black/90" disabled={savingPassword} onClick={() => void handleChangePassword()}>
+            <Button
+              className="!h-10 !w-56 !justify-center !rounded-md !bg-black !text-white hover:!bg-black/90"
+              disabled={savingPassword}
+              onClick={() => void handleChangePassword()}
+            >
               {savingPassword ? "A guardar..." : "Guardar palavra-passe"}
             </Button>
           </CardContent>
@@ -157,26 +265,76 @@ export default function Security() {
 
         <Card className="border-border/60 bg-card/90">
           <CardHeader>
-            <CardTitle className="font-display text-xl">Melhorias de segurança</CardTitle>
-            <CardDescription>Proteções opcionais para preparar o futuro.</CardDescription>
+            <CardTitle className="font-display text-xl">Security improvements</CardTitle>
+            <CardDescription>Optional protections ready for admin login.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             <div className="flex items-center justify-between rounded-lg border border-border/60 bg-background/70 p-3">
               <div>
-                <p className="text-sm font-medium">Autenticação de dois fatores</p>
-                <p className="text-xs text-muted-foreground">Verificação adicional de login</p>
+                <p className="text-sm font-medium">Two-factor authentication</p>
+                <p className="text-xs text-muted-foreground">Google Authenticator compatible TOTP</p>
               </div>
-              <Switch />
+              <Switch
+                checked={twoFactorEnabled || Boolean(twoFactorOtpAuthUrl)}
+                disabled={twoFactorLoading || settingUpTwoFactor || disablingTwoFactor}
+                onCheckedChange={(checked) => void handleToggleTwoFactor(Boolean(checked))}
+              />
             </div>
+
             <div className="flex items-center justify-between rounded-lg border border-border/60 bg-background/70 p-3">
               <div>
-                <p className="text-sm font-medium">Sistema de perfis (futuro)</p>
-                <p className="text-xs text-muted-foreground">Preparar acesso multi-admin</p>
+                <p className="text-sm font-medium">Profile system (future)</p>
+                <p className="text-xs text-muted-foreground">Prepare multi-admin access</p>
               </div>
-              <Switch />
+              <Switch disabled />
             </div>
+
+            {twoFactorError ? <p className="text-sm text-destructive">{twoFactorError}</p> : null}
+            {twoFactorSuccess ? <p className="text-sm text-emerald-600">{twoFactorSuccess}</p> : null}
+
+            {twoFactorOtpAuthUrl ? (
+              <div className="space-y-3 rounded-lg border border-border/60 bg-background/70 p-4">
+                <p className="text-sm font-medium">Scan with Google Authenticator</p>
+                {qrUrl ? <img src={qrUrl} alt="2FA QR code" className="h-44 w-44 rounded-md border border-border/60 bg-white p-2" /> : null}
+                <div className="space-y-1 text-xs text-muted-foreground">
+                  <p>If the QR does not load, add the key manually in Google Authenticator:</p>
+                  <p className="break-all font-mono text-[11px] text-foreground">{twoFactorSecret}</p>
+                </div>
+                <Input
+                  placeholder="Enter 6-digit code"
+                  value={twoFactorCode}
+                  onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D+/g, "").slice(0, 6))}
+                  inputMode="numeric"
+                  maxLength={6}
+                />
+                <Button
+                  className="!h-10 !w-full !justify-center !rounded-md !bg-black !text-white hover:!bg-black/90"
+                  disabled={settingUpTwoFactor}
+                  onClick={() => void handleConfirmTwoFactor()}
+                >
+                  {settingUpTwoFactor ? "Confirming..." : "Confirm Google Authenticator"}
+                </Button>
+              </div>
+            ) : null}
+
+            {twoFactorEnabled && !twoFactorOtpAuthUrl ? (
+              <div className="space-y-3 rounded-lg border border-border/60 bg-background/70 p-4">
+                <p className="text-sm font-medium">2FA is enabled</p>
+                <p className="text-xs text-muted-foreground">
+                  To disable it, enter the current 6-digit code from Google Authenticator and switch it off.
+                </p>
+                <Input
+                  placeholder="Current 6-digit code"
+                  value={twoFactorCode}
+                  onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D+/g, "").slice(0, 6))}
+                  inputMode="numeric"
+                  maxLength={6}
+                />
+              </div>
+            ) : null}
+
             <Button className="!h-10 !w-full !justify-center !rounded-md !bg-black !text-white hover:!bg-black/90">
-              Rever políticas
+              Review policies
             </Button>
           </CardContent>
         </Card>
@@ -192,7 +350,7 @@ export default function Security() {
             <TableHeader>
               <TableRow>
                 <TableHead>Data</TableHead>
-                <TableHead>Localização</TableHead>
+                <TableHead>Localizacao</TableHead>
                 <TableHead>Estado</TableHead>
               </TableRow>
             </TableHeader>
