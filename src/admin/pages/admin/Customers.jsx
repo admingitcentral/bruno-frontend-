@@ -24,12 +24,6 @@ function formatCurrency(value) {
   }).format(Number.isFinite(amount) ? amount : 0);
 }
 
-function formatDateTime(value) {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "-";
-  return parsed.toLocaleString();
-}
-
 function formatRelativeDate(value) {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return "-";
@@ -65,7 +59,6 @@ function buildCustomers(orders) {
         totalSpent: Number.isFinite(total) ? total : 0,
         lastActivityAt: createdAt,
         lastOrderNumber: normalizeText(order.order_number) || `#${order.id}`,
-        lastOrderStatus: normalizeText(order.status) || "pending",
         orders: [order],
       });
       continue;
@@ -80,7 +73,6 @@ function buildCustomers(orders) {
     if (currentDate >= existingDate) {
       existing.lastActivityAt = createdAt;
       existing.lastOrderNumber = normalizeText(order.order_number) || `#${order.id}`;
-      existing.lastOrderStatus = normalizeText(order.status) || existing.lastOrderStatus;
       existing.name = name || existing.name;
     }
   }
@@ -223,48 +215,26 @@ const Customers = () => {
                   </p>
                 </div>
 
-                <div className="space-y-2 text-sm">
+                <div className="space-y-3 px-1 text-sm">
                   <p className="font-medium">Encomendas: {selectedCustomer.orderCount}</p>
                   <p className="font-medium">Total gasto: {formatCurrency(selectedCustomer.totalSpent)}</p>
                   <p className="font-medium">Ultima encomenda: {selectedCustomer.lastOrderNumber || "-"}</p>
-                  <p className="font-medium">
-                    Estado da ultima encomenda: {selectedCustomer.lastOrderStatus || "-"}
-                  </p>
-                  <p className="font-medium">
-                    Ultima atividade completa: {formatDateTime(selectedCustomer.lastActivityAt)}
-                  </p>
                 </div>
 
-                <div className="space-y-2 rounded-xl border border-slate-300 bg-white/70 p-4 text-sm">
-                  <p className="font-medium">Encomendas recentes</p>
-                  {selectedCustomer.orders.slice(0, 4).map((order) => (
-                    <div key={order.id} className="flex items-center justify-between gap-3 border-b border-slate-200 pb-2 last:border-b-0 last:pb-0">
-                      <div>
-                        <p className="font-medium">{order.order_number || `#${order.id}`}</p>
-                        <p className="text-xs text-black/60">{formatDateTime(order.created_at)}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium">{formatCurrency(order.total)}</p>
-                        <StatusBadge status={normalizeText(order.status) || "pending"} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex flex-wrap gap-4">
+                <div className="flex flex-wrap gap-4 sm:flex-nowrap">
                   <Button
                     size="sm"
                     disabled
-                    className="!h-12 !w-48 !rounded-xl !bg-black !text-white disabled:opacity-100"
+                    className="!h-12 !min-w-[190px] !flex-1 !rounded-2xl !bg-black !text-white disabled:opacity-100"
                   >
-                    Sem acao de password
+                    Redefinir Password
                   </Button>
                   <Button
                     size="sm"
                     disabled
-                    className="!h-12 !w-48 !rounded-xl !bg-destructive !text-destructive-foreground disabled:opacity-100"
+                    className="!h-12 !min-w-[190px] !flex-1 !rounded-2xl !bg-[#e4312f] !text-white hover:!bg-[#e4312f] disabled:opacity-100"
                   >
-                    Sem endpoint de desativacao
+                    Desativar Conta
                   </Button>
                 </div>
               </>
