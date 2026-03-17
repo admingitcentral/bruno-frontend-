@@ -130,10 +130,10 @@ const navSections = [
     label: "Plataforma",
     items: [
       { title: "Integrações", to: "/admin/integrations", icon: Plug },
-      { title: "Traduções", to: "/admin/blogs", icon: BookOpen },
-      { title: "Definições", to: "/admin/languages", icon: Languages },
-      { title: "Segurança", to: "/admin/settings", icon: Settings },
-      { title: "Admin Security", to: "/admin/security", icon: ShieldCheck }
+      { title: "Traduções", to: "/admin/languages", icon: Languages },
+      { title: "Definições", to: "/admin/settings", icon: Settings },
+      { title: "Blog", to: "/admin/blogs", icon: BookOpen },
+      { title: "Segurança", to: "/admin/security", icon: ShieldCheck }
     ]
   }
 ];
