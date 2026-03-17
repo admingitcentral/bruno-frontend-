@@ -95,6 +95,10 @@ const Customers = () => {
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [sendingReset, setSendingReset] = useState(false);
+  const [deactivating, setDeactivating] = useState(false);
+  const [inactiveEmails, setInactiveEmails] = useState([]);
 
   useEffect(() => {
     let active = true;
@@ -103,6 +107,7 @@ const Customers = () => {
       try {
         setLoading(true);
         setError("");
+        setMessage("");
         const rows = await adminApi.listOrders();
         if (!active) return;
         setOrders(Array.isArray(rows) ? rows : []);
@@ -121,7 +126,14 @@ const Customers = () => {
     };
   }, []);
 
-  const customers = useMemo(() => buildCustomers(orders), [orders]);
+  const customers = useMemo(
+    () =>
+      buildCustomers(orders).map((customer) => ({
+        ...customer,
+        status: inactiveEmails.includes(customer.email) ? "Inactive" : customer.status,
+      })),
+    [inactiveEmails, orders]
+  );
 
   useEffect(() => {
     if (!customers.length) {
@@ -135,6 +147,39 @@ const Customers = () => {
 
   const selectedCustomer = customers.find((customer) => customer.id === selectedCustomerId) || null;
 
+  const handlePasswordReset = async () => {
+    if (!selectedCustomer?.email) return;
+    try {
+      setSendingReset(true);
+      setError("");
+      setMessage("");
+      await adminApi.requestCustomerPasswordReset(selectedCustomer.email);
+      setMessage(`Password reset OTP sent to ${selectedCustomer.email}.`);
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : "Falha ao enviar reset de password.");
+      setMessage("");
+    } finally {
+      setSendingReset(false);
+    }
+  };
+
+  const handleDeactivate = async () => {
+    if (!selectedCustomer?.email) return;
+    try {
+      setDeactivating(true);
+      setError("");
+      setMessage("");
+      await adminApi.deactivateCustomerAccount(selectedCustomer.email);
+      setInactiveEmails((prev) => (prev.includes(selectedCustomer.email) ? prev : [...prev, selectedCustomer.email]));
+      setMessage(`Conta desativada para ${selectedCustomer.email}.`);
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : "Falha ao desativar a conta.");
+      setMessage("");
+    } finally {
+      setDeactivating(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -142,6 +187,7 @@ const Customers = () => {
         description="Rever atividade dos clientes, encomendas e controlo de contas."
       />
 
+      {message ? <p className="text-sm text-emerald-700">{message}</p> : null}
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
       <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
@@ -224,17 +270,19 @@ const Customers = () => {
                 <div className="flex flex-wrap gap-4 sm:flex-nowrap">
                   <Button
                     size="sm"
-                    disabled
+                    disabled={!selectedCustomer || sendingReset || deactivating}
+                    onClick={() => void handlePasswordReset()}
                     className="!h-12 !min-w-[190px] !flex-1 !rounded-2xl !bg-black !text-white disabled:opacity-100"
                   >
-                    Redefinir Password
+                    {sendingReset ? "A enviar..." : "Redefinir Password"}
                   </Button>
                   <Button
                     size="sm"
-                    disabled
+                    disabled={!selectedCustomer || sendingReset || deactivating}
+                    onClick={() => void handleDeactivate()}
                     className="!h-12 !min-w-[190px] !flex-1 !rounded-2xl !bg-[#e4312f] !text-white hover:!bg-[#e4312f] disabled:opacity-100"
                   >
-                    Desativar Conta
+                    {deactivating ? "A desativar..." : "Desativar Conta"}
                   </Button>
                 </div>
               </>

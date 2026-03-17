@@ -89,6 +89,8 @@ export const adminApi = {
   updateBlogPost: (id: string, payload: unknown) => putJson(`/api/blog/admin/${id}`, payload),
   deleteBlogPost: (id: string) => deleteJson(`/api/blog/admin/${id}`),
 
+  requestCustomerPasswordReset: (email: string) => postJson('/api/auth/forgot-password/request', { email }),
+  deactivateCustomerAccount: (email: string) => postJson('/api/auth/customers/deactivate', { email }),
   changeAdminPassword: (payload: { email: string; current_password: string; new_password: string }) =>
     postJson('/api/auth/change-password', payload),
 };
