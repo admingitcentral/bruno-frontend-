@@ -1,7 +1,7 @@
-import { Tooltip } from 'recharts'
+import { ResponsiveContainer, Tooltip } from 'recharts'
 import { cn } from '@/lib/utils'
 
-function ChartContainer({ className, config = {}, style, ...props }) {
+function ChartContainer({ className, config = {}, style, children, ...props }) {
   const variableStyle = { ...(style || {}) }
 
   Object.entries(config).forEach(([key, value]) => {
@@ -10,7 +10,13 @@ function ChartContainer({ className, config = {}, style, ...props }) {
     }
   })
 
-  return <div className={cn('w-full', className)} style={variableStyle} {...props} />
+  return (
+    <div className={cn('w-full', className)} style={variableStyle} {...props}>
+      <ResponsiveContainer width="100%" height="100%">
+        {children}
+      </ResponsiveContainer>
+    </div>
+  )
 }
 
 const ChartTooltip = Tooltip
@@ -32,4 +38,3 @@ function ChartTooltipContent({ active, payload, label }) {
 }
 
 export { ChartContainer, ChartTooltip, ChartTooltipContent }
-

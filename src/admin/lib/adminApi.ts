@@ -98,4 +98,7 @@ export const adminApi = {
     postJson('/api/auth/admin/2fa/disable', payload),
   changeAdminPassword: (payload: { email: string; current_password: string; new_password: string }) =>
     postJson('/api/auth/change-password', payload),
+
+  requestCustomerPasswordResetOtp: (email: string) => postJson('/api/auth/forgot-password/request', { email }),
+  deactivateCustomerAccount: (email: string) => postJson('/api/auth/customers/deactivate', { email }),
 };
