@@ -24,6 +24,12 @@ const Integrations = () => {
   });
   const [logs, setLogs] = useState([]);
   const [message, setMessage] = useState("");
+  const formatError = (error) => {
+    if (!error) return "Erro desconhecido";
+    if (typeof error === "string") return error;
+    if (error?.message) return String(error.message);
+    return String(error);
+  };
   const load = async () => {
     const [s, l] = await Promise.all([
       adminApi.getIntegrationSettings(),
@@ -36,6 +42,29 @@ const Integrations = () => {
   useEffect(() => {
     void load();
   }, []);
+  const handleSave = async () => {
+    try {
+      setMessage("");
+      await adminApi.updateIntegrationSettings(settings);
+      setMessage("Settings saved");
+      notifyIntegrationStatusUpdated();
+      await load();
+    } catch (error) {
+      setMessage(formatError(error));
+      await load();
+    }
+  };
+  const handleManualSync = async () => {
+    try {
+      setMessage("");
+      await adminApi.manualSync();
+      await load();
+      setMessage("Manual sync completed");
+    } catch (error) {
+      setMessage(formatError(error));
+      await load();
+    }
+  };
   return <div className='space-y-6'>
       <PageHeader title='Definições de integração' description='Defina as suas integrações, sincronize manualmente e trabalhe a segurança dos webhooks.' />
       {message ? <p className='text-sm'>{message}</p> : null}
@@ -58,13 +87,13 @@ const Integrations = () => {
           <div className='flex flex-wrap gap-3 md:col-span-2'>
             <Button
               className='!h-10 !w-28 !justify-center !rounded-md !bg-black !text-white hover:!bg-black/90'
-              onClick={() => void adminApi.updateIntegrationSettings(settings).then(() => setMessage("Definições guardadas")).then(() => notifyIntegrationStatusUpdated())}
+              onClick={() => void handleSave()}
             >
               Guardar
             </Button>
             <Button
               className='!h-10 !w-44 !justify-center !rounded-md !bg-zinc-400 !text-white hover:!bg-zinc-500'
-              onClick={() => void adminApi.manualSync().then(() => load()).then(() => setMessage("Sincronização manual concluída"))}
+              onClick={() => void handleManualSync()}
             >
               Sincronização manual
             </Button>
@@ -75,7 +104,7 @@ const Integrations = () => {
       <Card className='rounded-[28px] bg-zinc-100'>
         <CardHeader><CardTitle>Registos de sincronização</CardTitle></CardHeader>
         <CardContent className='space-y-2'>
-          {logs.map((log) => <p key={log.id} className='text-sm'>{log.created_at} | {log.mode} | {log.status}</p>)}
+          {logs.map((log) => <p key={log.id} className='text-sm'>{log.created_at} | {log.mode} | {log.status}{log.details?.message ? ` | ${log.details.message}` : ""}</p>)}
         </CardContent>
       </Card>
     </div>;
@@ -84,3 +113,4 @@ var stdin_default = Integrations;
 export {
   stdin_default as default
 };
+
