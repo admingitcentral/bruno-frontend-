@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PageHeader } from "@/admin/components/admin/PageHeader";
 import { adminApi } from "@/lib/adminApi";
 import { toApiUrl } from "@/lib/api";
@@ -29,6 +29,7 @@ const resolveShopifyShop = (baseUrl) => {
   }
 };
 const Integrations = () => {
+  const autoSyncRef = useRef(false);
   const [settings, setSettings] = useState({
     base_url: "",
     api_key: "",
@@ -58,6 +59,20 @@ const Integrations = () => {
   };
   useEffect(() => {
     void load();
+  }, []);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("shopify") !== "connected") return;
+    if (autoSyncRef.current) return;
+    autoSyncRef.current = true;
+    void (async () => {
+      setMessage("Shopify connected. Starting sync...");
+      await handleManualSync();
+      params.delete("shopify");
+      const next = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+      window.history.replaceState({}, "", next);
+    })();
   }, []);
   const handleSave = async () => {
     try {
