@@ -152,10 +152,15 @@ const ContactPage = () => {
           <p className='m-0 mt-3 text-[14px] sm:text-[16px] leading-[1.5] tracking-[0.04em] text-[#333]'>
             Visita-nos numa das nossas lojas fisicas e recebe aconselhamento especializado.
           </p>
-          <div className='mx-auto mt-6 max-w-[320px] md:hidden'>
+          <div className='mx-auto mt-6 w-full max-w-[1180px]'>
             <Swiper
               slidesPerView={1}
-              spaceBetween={12}
+              spaceBetween={16}
+              breakpoints={{
+                640: { slidesPerView: 1.25, spaceBetween: 16 },
+                768: { slidesPerView: 2.1, spaceBetween: 18 },
+                1024: { slidesPerView: 3, spaceBetween: 20 },
+              }}
               pagination={{ clickable: true }}
               navigation={true}
               modules={[Pagination, Navigation]}
@@ -163,15 +168,10 @@ const ContactPage = () => {
             >
               {stores.map((store) => (
                 <SwiperSlide key={`store-mobile-${store.id}`} className='!flex justify-center py-2'>
-                  <StoreCard image={store.image} title={store.name} />
-                </SwiperSlide>
+                <StoreCard image={store.image} title={store.name} />
+              </SwiperSlide>
               ))}
             </Swiper>
-          </div>
-          <div className='mt-6 hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3'>
-            {stores.map((store) => (
-              <StoreCard key={`store-desktop-${store.id}`} image={store.image} title={store.name} />
-            ))}
           </div>
         </section>
       </main>
