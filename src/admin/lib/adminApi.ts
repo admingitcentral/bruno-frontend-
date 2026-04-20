@@ -32,6 +32,12 @@ export const adminApi = {
   updateIntegrationSettings: (payload: unknown) => putJson('/api/integration/settings', payload),
   manualSync: () => postJson('/api/integration/sync/manual', {}),
   getSyncLogs: () => getJson('/api/integration/logs'),
+  getShopifyOAuthInfo: (shop?: string) => {
+    const search = new URLSearchParams();
+    if (shop) search.set('shop', shop);
+    const query = search.toString();
+    return getJson(`/api/integration/shopify/oauth/info${query ? `?${query}` : ''}`);
+  },
 
   listCoupons: () => getJson('/api/discounts/coupons'),
   createCoupon: (payload: unknown) => postJson('/api/discounts/coupons', payload),

@@ -24,6 +24,18 @@ const hasConnectionDetails = (settings) =>
   Boolean(String(settings?.base_url || "").trim()) &&
   Boolean(String(settings?.api_key || "").trim() || settings?.has_api_key);
 
+const normalizeShopifyShop = (value) => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  const withoutProtocol = raw.replace(/^https?:\/\//i, "").replace(/\/.*$/, "").replace(/\/+$/, "");
+  if (!/^[a-z0-9][a-z0-9-]*\.myshopify\.com$/i.test(withoutProtocol)) {
+    return "";
+  }
+
+  return withoutProtocol.toLowerCase();
+};
+
 export default function Integrations() {
   const [settings, setSettings] = useState({
     base_url: "",
@@ -37,6 +49,7 @@ export default function Integrations() {
   });
   const [logs, setLogs] = useState([]);
   const [message, setMessage] = useState("");
+  const [isConnectingShopify, setIsConnectingShopify] = useState(false);
 
   const formatError = (error) => {
     if (!error) return "Unknown error";
@@ -62,6 +75,11 @@ export default function Integrations() {
   const handleSave = async () => {
     try {
       setMessage("");
+      if (isShopifySettings(settings) && String(settings.api_key || "").includes(":")) {
+        setMessage("For Shopify, use Connect Shopify or paste the Admin API access token only. Do not use Client ID and Client Secret.");
+        return;
+      }
+
       if (settings.is_active && !hasConnectionDetails(settings)) {
         setMessage("Add the integration URL and access token before activating sync.");
         return;
@@ -97,6 +115,46 @@ export default function Integrations() {
       await load();
     }
   };
+
+  const handleConnectShopify = async () => {
+    const shop = normalizeShopifyShop(settings.base_url);
+    if (!shop) {
+      setMessage("Enter a valid Shopify shop URL such as https://your-store.myshopify.com before connecting.");
+      return;
+    }
+
+    try {
+      setIsConnectingShopify(true);
+      setMessage("");
+      const info = await adminApi.getShopifyOAuthInfo(shop);
+      if (!info?.shopify_client_id_configured) {
+        setMessage("Shopify OAuth is not configured on the backend. Add SHOPIFY_CLIENT_ID and SHOPIFY_CLIENT_SECRET first.");
+        return;
+      }
+
+      const returnTo = window.location.href;
+      const redirectUrl = `/api/integration/shopify/oauth/start?shop=${encodeURIComponent(shop)}&return_to=${encodeURIComponent(returnTo)}`;
+      window.location.assign(redirectUrl);
+    } catch (error) {
+      setMessage(formatError(error));
+    } finally {
+      setIsConnectingShopify(false);
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("shopify") === "connected") {
+      setMessage("Shopify connected. The store token was saved through OAuth.");
+      url.searchParams.delete("shopify");
+      window.history.replaceState({}, "", url.toString());
+      void load();
+    }
+
+    return undefined;
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -149,7 +207,7 @@ export default function Integrations() {
 
           {isShopifySettings(settings) ? (
             <p className="text-xs text-muted-foreground md:col-span-2">
-              For Shopify, use the Admin API access token from your custom app. Required scope:
+              For Shopify, use the Connect Shopify button to authorize Bruno and save the store Admin API token automatically. If you paste a value manually, it must be the Admin API access token only. Required scope:
               {" "}
               <span className="font-medium">read_products</span>.
               {" "}
@@ -176,6 +234,16 @@ export default function Integrations() {
           </div>
 
           <div className="flex flex-wrap gap-3 md:col-span-2">
+            {isShopifySettings(settings) ? (
+              <Button
+                className="!h-10 !w-44 !justify-center !rounded-md !bg-emerald-700 !text-white hover:!bg-emerald-800"
+                onClick={() => void handleConnectShopify()}
+                disabled={isConnectingShopify}
+              >
+                {isConnectingShopify ? "Connecting..." : "Connect Shopify"}
+              </Button>
+            ) : null}
+
             <Button
               className="!h-10 !w-28 !justify-center !rounded-md !bg-black !text-white hover:!bg-black/90"
               onClick={() => void handleSave()}
