@@ -49,6 +49,14 @@ const fallbackAbout = {
   ],
 }
 
+const fallbackPageContent = {
+  title: fallbackAbout.hero_title,
+  subtitle: fallbackAbout.hero_body,
+  section_title: fallbackAbout.section_title,
+  section_body: fallbackAbout.section_body,
+  stores_title: 'Estamos perto de ti',
+  stores_body: 'Visita-nos numa das nossas lojas fisicas e recebe aconselhamento especializado.',
+}
 const fallbackStores = [
   { id: 'faro', name: 'Loja de Faro', image: StoreFaro },
   { id: 'lisboa', name: 'Loja de Lisboa', image: StoreLisboa },
@@ -63,8 +71,13 @@ function normalizeImage(value, fallbackValue) {
 const AboutUsPage = () => {
   const [aboutData, setAboutData] = useState(fallbackAbout)
   const [stores, setStores] = useState(fallbackStores)
+  const [pageContent, setPageContent] = useState(fallbackPageContent)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const heroImageUrl = useMemo(
+    () => resolveAssetUrl(pageContent?.hero_image_url || '') || aboutData.section_images?.hero || fallbackAbout.section_images.hero,
+    [aboutData.section_images?.hero, pageContent?.hero_image_url]
+  )
 
   useEffect(() => {
     let active = true
@@ -74,9 +87,10 @@ const AboutUsPage = () => {
       try {
         setLoading(true)
         setError('')
-        const [aboutResult, storesResult] = await Promise.allSettled([
+        const [aboutResult, storesResult, pageResult] = await Promise.allSettled([
           getJson('/api/system/about-us', { signal: controller.signal }),
           getJson('/api/stores', { signal: controller.signal }),
+          getJson('/api/system/pages/about-us', { signal: controller.signal }),
         ])
         if (!active) return
 
@@ -103,6 +117,17 @@ const AboutUsPage = () => {
           })
         }
 
+        if (pageResult.status === 'fulfilled' && pageResult.value && typeof pageResult.value === 'object') {
+          const page = pageResult.value
+          setPageContent({
+            title: page.title || fallbackPageContent.title,
+            subtitle: page.subtitle || fallbackPageContent.subtitle,
+            section_title: page.section_title || fallbackPageContent.section_title,
+            section_body: page.section_body || fallbackPageContent.section_body,
+            stores_title: page.stores_title || fallbackPageContent.stores_title,
+            stores_body: page.stores_body || fallbackPageContent.stores_body,
+          })
+        }
         if (storesResult.status === 'fulfilled' && Array.isArray(storesResult.value)) {
           const mappedStores = storesResult.value
             .filter((store) => store?.is_active !== false)
@@ -117,7 +142,7 @@ const AboutUsPage = () => {
           }
         }
 
-        if (aboutResult.status === 'rejected' && storesResult.status === 'rejected') {
+        if (aboutResult.status === 'rejected' && storesResult.status === 'rejected' && pageResult.status === 'rejected') {
           setError('Conteudo dinamico indisponivel. A mostrar conteudo padrao.')
         }
       } catch (err) {
@@ -155,7 +180,7 @@ const AboutUsPage = () => {
         <div className='mx-auto max-w-[1200px] grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-start'>
           <div className='w-full'>
             <img
-              src={aboutData.section_images?.hero || fallbackAbout.section_images.hero}
+              src={heroImageUrl}
               alt='Sobre Nos'
               className='w-full h-[50%] object-cover'
             />
@@ -163,10 +188,10 @@ const AboutUsPage = () => {
 
           <div className='pt-2'>
             <h1 className='m-0 lg:text-[58px] sm:text-[34px] md:text-[38px] text-[#3a231d] font-medium'>
-              {aboutData.hero_title || fallbackAbout.hero_title}
+              {pageContent.title || aboutData.hero_title || fallbackAbout.hero_title}
             </h1>
             <p className='mt-4 text-[14px] sm:text-[15px] leading-[1.75] text-[#2c2c2c]'>
-              {aboutData.hero_body || fallbackAbout.hero_body}
+              {pageContent.subtitle || aboutData.hero_body || fallbackAbout.hero_body}
             </p>
           </div>
         </div>
@@ -176,10 +201,10 @@ const AboutUsPage = () => {
         <div className='mx-auto max-w-[1200px] grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-8 lg:gap-12 items-start'>
           <div>
             <h2 className='m-0 text-[30px] sm:text-[34px] lg:text-[38px] text-[#3a231d] font-medium'>
-              {aboutData.section_title || fallbackAbout.section_title}
+              {pageContent.section_title || aboutData.section_title || fallbackAbout.section_title}
             </h2>
             <p className='mt-4 max-w-[520px] text-[14px] sm:text-[15px] leading-[1.75] text-[#2c2c2c]'>
-              {aboutData.section_body || fallbackAbout.section_body}
+              {pageContent.section_body || aboutData.section_body || fallbackAbout.section_body}
             </p>
 
             <div className='mt-8 w-full max-w-[520px] overflow-hidden bg-[#f2f2f2]'>
@@ -274,10 +299,10 @@ const AboutUsPage = () => {
         data-theme-layout-section='stores'
       >
         <h2 className='m-0 text-[28px] sm:text-[32px] leading-[1.04] font-normal text-[#262626]'>
-          Estamos perto de ti
+          {pageContent.stores_title || fallbackPageContent.stores_title}
         </h2>
         <p className='m-0 mt-3 text-[14px] sm:text-[16px] leading-[1.5] tracking-[0.04em] text-[#333]'>
-          Visita-nos numa das nossas lojas fisicas e recebe aconselhamento especializado.
+          {pageContent.stores_body || fallbackPageContent.stores_body}
         </p>
         <div className='mx-auto mt-6 w-full max-w-[1180px]'>
           <Swiper

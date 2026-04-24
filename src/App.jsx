@@ -745,7 +745,6 @@ function App() {
               pagination={{ clickable: true }}
               navigation
               loop={true}
-              loopFillGroupWithBlank={false}
               slidesPerView={1}
               className='hero-carousel w-full'
             >
@@ -843,7 +842,6 @@ function App() {
               pagination={{ clickable: true }}
               navigation={true}
               loop={true}
-              loopFillGroupWithBlank={false}
               modules={[Pagination, Navigation]}
               className='mySwiper'
             >
@@ -946,7 +944,6 @@ function App() {
             navigation={true}
 
                   loop={true}
-              loopFillGroupWithBlank={false}
             modules={[Pagination, Navigation]}
             className='mySwiper'
           >

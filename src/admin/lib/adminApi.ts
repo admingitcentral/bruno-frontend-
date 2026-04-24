@@ -94,6 +94,11 @@ export const adminApi = {
   getSystemModules: () => getJson('/api/system/modules'),
   setSystemModule: (moduleKey: string, enabled: boolean) =>
     putJson(`/api/system/modules/${moduleKey}`, { enabled }),
+  listSitePages: () => getJson('/api/system/pages'),
+  getSitePage: (slug: string) => getJson(`/api/system/pages/${slug}`),
+  setSitePage: (slug: string, payload: unknown) => putJson(`/api/system/pages/${slug}`, payload),
+  getAboutUs: () => getJson('/api/system/about-us'),
+  setAboutUs: (payload: unknown) => putJson('/api/system/about-us', payload),
   getGeneralSettings: () => getJson('/api/system/general-settings'),
   setGeneralSettings: (payload: unknown) => putJson('/api/system/general-settings', payload),
   getThemeSettings: () => getJson('/api/system/theme'),

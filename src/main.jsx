@@ -14,6 +14,7 @@ import BlogDetails from './BlogDetails.jsx'
 import ThankuMessagePage from './ThankuMessagePage.jsx'
 import ContactPage from './ContactPage.jsx'
 import AboutUsPage from './AboutUsPage.jsx'
+import CmsPage from './CmsPage.jsx'
 
 import { AdminAuthProvider, useAdminAuth } from './admin/contexts/AdminAuthContext.jsx'
 import AdminLayout from './admin/components/admin/AdminLayout.jsx'
@@ -43,6 +44,8 @@ import ThemeEditor from './admin/pages/admin/ThemeEditor.jsx'
 import Security from './admin/pages/admin/Security.jsx'
 import LowStockProducts from './admin/pages/admin/LowStockProducts.jsx'
 import Blogs from './admin/pages/admin/Blogs.jsx'
+import Testimonials from './admin/pages/admin/Testimonials.jsx'
+import Pages from './admin/pages/admin/Pages.jsx'
 
 const AdminProviders = () => (
   <AdminAuthProvider>
@@ -106,10 +109,12 @@ createRoot(document.getElementById('root')).render(
             <Route path='languages' element={<Languages />} />
             <Route path='layouts' element={<Layouts />} />
             <Route path='theme-editor' element={<ThemeEditor />} />
+            <Route path='pages' element={<Pages />} />
             <Route path='settings' element={<Settings />} />
             <Route path='security' element={<Security />} />
             <Route path='low-stock' element={<LowStockProducts />} />
             <Route path='blogs' element={<Blogs />} />
+            <Route path='testimonials' element={<Testimonials />} />
           </Route>
         </Route>
 
@@ -125,6 +130,7 @@ createRoot(document.getElementById('root')).render(
         <Route path='/thanku-message' element={<ThankuMessagePage />} />
         <Route path='/contact' element={<ContactPage />} />
         <Route path='/about-us' element={<AboutUsPage />} />
+        <Route path='/:slug' element={<CmsPage />} />
       </Routes>
     </Router>
   </StrictMode>

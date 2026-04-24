@@ -68,14 +68,16 @@ function mapBlogPost(post, index) {
     title,
     date: formatDate(post?.published_at || post?.created_at),
     image: resolveAssetUrl(post?.cover_image_url || '') || blogPosts[index % blogPosts.length].image,
-    to: slug ? `/blog/${encodeURIComponent(slug)}` : '/blogs',
+    to: slug ? `/blog/${encodeURIComponent(slug)}` : '/blog',
   }
 }
 
 const BlogsPage = () => {
   const [posts, setPosts] = useState([])
+  const [pageContent, setPageContent] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const heroImageUrl = resolveAssetUrl(pageContent?.hero_image_url || '')
 
   useEffect(() => {
     let active = true
@@ -84,9 +86,13 @@ const BlogsPage = () => {
       try {
         setLoading(true)
         setError('')
-        const rows = await getJson('/api/blog')
+        const [rows, page] = await Promise.all([
+          getJson('/api/blog'),
+          getJson('/api/system/pages/blog').catch(() => null),
+        ])
         if (!active) return
         setPosts(Array.isArray(rows) ? rows.map(mapBlogPost) : [])
+        if (page && typeof page === 'object') setPageContent(page)
       } catch (err) {
         if (!active) return
         setPosts([])
@@ -103,7 +109,7 @@ const BlogsPage = () => {
   }, [])
 
   const visiblePosts = useMemo(
-    () => (posts.length > 0 ? posts : blogPosts.map((entry, index) => ({ ...entry, to: '/blogs', id: entry.id || index }))),
+    () => (posts.length > 0 ? posts : blogPosts.map((entry, index) => ({ ...entry, to: '/blog', id: entry.id || index }))),
     [posts]
   )
 
@@ -111,12 +117,19 @@ const BlogsPage = () => {
     <>
       <Navbar />
       <main className='bg-[#efefef] py-12 min-h-[70vh]' data-theme-layout-root='blogs'>
+        {heroImageUrl ? (
+          <section className='mb-10' data-theme-layout-section='hero-image'>
+            <div className='w-[90vw] max-w-[1150px] mx-auto overflow-hidden rounded-[28px]'>
+              <img src={heroImageUrl} alt={pageContent?.title || 'Blog'} className='h-[240px] w-full object-cover sm:h-[320px] lg:h-[420px]' />
+            </div>
+          </section>
+        ) : null}
         <section data-theme-layout-section='intro'>
           <div className='w-[90vw] max-w-[1150px] mx-auto'>
-            <h1 className='m-0 text-[42px] font-normal text-black'>Blog</h1>
+            <h1 className='m-0 text-[42px] font-normal text-black'>{pageContent?.title || 'Blog'}</h1>
             <p className='mt-3 mb-8 max-w-[500px] text-[16px] leading-[1.45] text-black/80'>
-              Ipsum sit id Morbi est non, dignissim, libero. Donec dolor sed vitae ex laoreet ex
-              non, elit lorem, hendrerit amet, elit ex.
+              {pageContent?.subtitle ||
+                'Ipsum sit id Morbi est non, dignissim, libero. Donec dolor sed vitae ex laoreet ex non, elit lorem, hendrerit amet, elit ex.'}
             </p>
             {loading ? <p className='mb-6 text-[13px] text-black/60'>Loading blogs...</p> : null}
             {error ? <p className='mb-6 text-[13px] text-[#b42318]'>Live blogs unavailable. Showing fallback items.</p> : null}

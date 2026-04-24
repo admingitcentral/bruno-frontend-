@@ -23,6 +23,8 @@ import {
   Sparkles,
   Store,
   Tags,
+  MessageSquareQuote,
+  FileText,
   Truck,
   Users,
   Menu,
@@ -134,8 +136,10 @@ const navSections = [
     items: [
       { title: "Integrações", to: "/admin/integrations", icon: Plug },
       { title: "Traduções", to: "/admin/languages", icon: Languages },
+      { title: "Pages", to: "/admin/pages", icon: FileText },
       { title: "Themes", to: "/admin/layouts", icon: LayoutTemplate },
       { title: "Definições", to: "/admin/settings", icon: Settings },
+      { title: "Testimonials", to: "/admin/testimonials", icon: MessageSquareQuote },
       { title: "Blog", to: "/admin/blogs", icon: BookOpen },
       { title: "Segurança", to: "/admin/security", icon: ShieldCheck }
     ]
@@ -624,4 +628,3 @@ var stdin_default = AdminLayout;
 export {
   stdin_default as default
 };
-

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/admin/components/admin/PageHeader";
 import { ConfirmDeleteButton } from "@/components/admin/ConfirmDeleteButton";
 import { adminApi } from "@/lib/adminApi";
+import { resolveApiFileUrl } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,20 +12,15 @@ const emptyForm = {
   region_district: "",
   priority_level: "1",
   address: "",
-  regions: "",
+  image_url: "",
   is_active: true
-};
-const parseRegions = (raw) => {
-  const unique = /* @__PURE__ */ new Set();
-  raw.split(",").map((item) => item.trim().toLowerCase()).filter((item) => Boolean(item)).forEach((item) => unique.add(item));
-  return Array.from(unique);
 };
 const toForm = (store) => ({
   name: store.name || "",
   region_district: store.region_district || "",
   priority_level: String(store.priority_level ?? 1),
   address: store.address || "",
-  regions: Array.isArray(store.regions) ? store.regions.join(", ") : "",
+  image_url: store.image_url || "",
   is_active: store.is_active !== false
 });
 const Stores = () => {
@@ -36,11 +32,18 @@ const Stores = () => {
 
   const [uploadingImageForStoreId, setUploadingImageForStoreId] = useState(null);
   const [selectedImageFile, setSelectedImageFile] = useState(null);
+  const [formImageFile, setFormImageFile] = useState(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(true);
   const [savingStore, setSavingStore] = useState(false);
   const [activeStoreActionId, setActiveStoreActionId] = useState(null);
+  const [selectedImagePreviewUrl, setSelectedImagePreviewUrl] = useState("");
+  const [formImagePreviewUrl, setFormImagePreviewUrl] = useState("");
+  const uploadTargetStore = useMemo(
+    () => rows.find((store) => store.id === uploadingImageForStoreId) || null,
+    [rows, uploadingImageForStoreId]
+  );
   const activeStoreCount = useMemo(
     () => rows.filter((store) => store.is_active !== false).length,
     [rows]
@@ -68,16 +71,34 @@ const Stores = () => {
   useEffect(() => {
     void load();
   }, []);
+  useEffect(() => {
+    if (!selectedImageFile) {
+      setSelectedImagePreviewUrl("");
+      return;
+    }
+    const previewUrl = URL.createObjectURL(selectedImageFile);
+    setSelectedImagePreviewUrl(previewUrl);
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [selectedImageFile]);
+  useEffect(() => {
+    if (!formImageFile) {
+      setFormImagePreviewUrl("");
+      return;
+    }
+    const previewUrl = URL.createObjectURL(formImageFile);
+    setFormImagePreviewUrl(previewUrl);
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [formImageFile]);
   const resetForm = () => {
     setForm(emptyForm);
     setEditingId(null);
+    setFormImageFile(null);
   };
   const handleSaveStore = async () => {
     const name = form.name.trim();
     const regionDistrict = form.region_district.trim();
     const address = form.address.trim();
     const priorityLevel = Number(form.priority_level);
-    const regions = parseRegions(form.regions);
     if (!name) {
       setError("O nome da loja é obrigatório.");
       setSuccess("");
@@ -98,18 +119,27 @@ const Stores = () => {
       setSuccess("");
       return;
     }
+    let imageUrl = String(form.image_url || '').trim();
     const payload = {
       name,
       region_district: regionDistrict,
       priority_level: priorityLevel,
       address,
-      regions,
+      image_url: imageUrl || null,
       is_active: form.is_active
     };
     try {
       setSavingStore(true);
       setError("");
       setSuccess("");
+      if (formImageFile) {
+        const uploadResult = await adminApi.uploadFile(formImageFile);
+        if (!uploadResult?.url) {
+          throw new Error("Falha ao fazer upload da imagem");
+        }
+        imageUrl = uploadResult.url;
+        payload.image_url = imageUrl;
+      }
       if (editingId != null) {
         await adminApi.updateStore(editingId, payload);
         setSuccess("Loja atualizada.");
@@ -209,7 +239,7 @@ const Stores = () => {
   return <div className="space-y-6">
       <PageHeader
     title="Gestão de lojas"
-    description="Gerir lojas, prioridade, moradas e regiões mapeadas."
+    description="Gerir lojas, prioridade, moradas e imagens para roteamento por distância."
   />
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       {success ? <p className="text-sm text-success">{success}</p> : null}
@@ -220,7 +250,7 @@ const Stores = () => {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Escolha como as novas encomendas são atribuídas: por mapeamento de região do cliente ou por maior quantidade de stock disponível.
+            Escolha como as novas encomendas são atribuídas: pela loja mais próxima com base na morada/localização ou pela maior quantidade de stock disponível.
           </p>
           <div className="flex flex-wrap gap-2">
             <Button
@@ -228,7 +258,7 @@ const Stores = () => {
     className={routingMode === "region" ? "!h-10 !rounded-md !bg-black !px-4 !text-white hover:!bg-black/90" : "!h-10 !rounded-md !bg-white !px-4 !text-black border border-slate-400/60 hover:!bg-zinc-100"}
     onClick={() => setRoutingMode("region")}
   >
-              Prioridade de Região
+              Mapa e Distância
             </Button>
             <Button
     type="button"
@@ -264,21 +294,19 @@ const Stores = () => {
                 <TableHead>Prioridade</TableHead>
                 <TableHead>Morada</TableHead>
                 <TableHead>Imagem</TableHead>
-
-                <TableHead>Regiões</TableHead>
                 <TableHead>Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
   {loading ? (
     <TableRow>
-      <TableCell colSpan={9} className="text-center text-sm text-muted-foreground">
+      <TableCell colSpan={8} className="text-center text-sm text-muted-foreground">
         A carregar lojas...
       </TableCell>
     </TableRow>
   ) : rows.length === 0 ? (
     <TableRow>
-      <TableCell colSpan={9} className="text-center text-sm text-muted-foreground">
+      <TableCell colSpan={8} className="text-center text-sm text-muted-foreground">
         Ainda não existem lojas configuradas.
       </TableCell>
     </TableRow>
@@ -301,7 +329,7 @@ const Stores = () => {
             {row.image_url ? (
               <div className="flex items-center gap-2">
                 <img
-                  src={row.image_url}
+                  src={resolveApiFileUrl(row.image_url)}
                   alt={row.name}
                   className="h-8 w-8 rounded object-cover"
                 />
@@ -323,17 +351,13 @@ const Stores = () => {
               </Button>
             )}
           </TableCell>
-
-          <TableCell>
-            {(row.regions || []).join(", ") || "-"}
-          </TableCell>
-
           <TableCell className="flex gap-2">
             <Button
               size="sm"
               onClick={() => {
                 setEditingId(row.id);
                 setForm(toForm(row));
+                setFormImageFile(null);
               }}
             >
               Editar
@@ -398,20 +422,47 @@ const Stores = () => {
     value={form.address}
     onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))}
   />
-          <Input
-    className="h-12 rounded-xl border-slate-400/60 focus:ring-0 focus:border-slate-500"
-    placeholder="Regiões mapeadas (separar com vírgulas)"
-    value={form.regions}
-    onChange={(e) => setForm((prev) => ({ ...prev, regions: e.target.value }))}
-  />
+          <div className="flex h-12 items-center rounded-xl border border-slate-400/60 bg-white px-4 text-sm text-muted-foreground">
+            A morada e o distrito da loja serão usados para calcular a loja mais próxima.
+          </div>
           <label className="flex h-12 items-center gap-3 rounded-xl border border-slate-400/60 bg-white px-4 text-sm">
             <input
     type="checkbox"
-    checked={form.is_active}
-    onChange={(e) => setForm((prev) => ({ ...prev, is_active: e.target.checked }))}
+            checked={form.is_active}
+            onChange={(e) => setForm((prev) => ({ ...prev, is_active: e.target.checked }))}
   />
             Ativar
           </label>
+          <div className="md:col-span-3 rounded-xl border border-slate-400/60 bg-white p-4">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Imagem da loja</p>
+                <p className="text-xs text-muted-foreground">
+                  A imagem enviada aqui será mostrada na secção de lojas do site público.
+                </p>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setFormImageFile(e.target.files?.[0] || null)}
+                  className="block text-sm"
+                />
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Pré-visualização</p>
+                {formImagePreviewUrl || form.image_url ? (
+                  <img
+                    src={formImagePreviewUrl || resolveApiFileUrl(form.image_url)}
+                    alt="Pré-visualização da loja"
+                    className="h-28 w-28 rounded-xl border object-cover"
+                  />
+                ) : (
+                  <div className="flex h-28 w-28 items-center justify-center rounded-xl border text-xs text-muted-foreground">
+                    Sem imagem
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
           <div className="flex gap-2 md:col-span-3">
             <Button className="!h-14 !w-56 !rounded-xl !bg-black !text-white hover:!bg-black/90" disabled={savingStore} onClick={() => void handleSaveStore()}>
               {savingStore ? "A guardar..." : editingId != null ? "Guardar alterações" : "Criar Loja"}
@@ -427,9 +478,22 @@ const Stores = () => {
       {uploadingImageForStoreId != null && (
         <Card className="rounded-2xl bg-zinc-100">
           <CardHeader>
-            <CardTitle>Carregar Imagem da Loja</CardTitle>
+            <CardTitle>
+              Carregar Imagem da Loja
+              {uploadTargetStore?.name ? `: ${uploadTargetStore.name}` : ""}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {uploadTargetStore?.image_url ? (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Imagem atual</p>
+                <img
+                  src={resolveApiFileUrl(uploadTargetStore.image_url)}
+                  alt={uploadTargetStore.name || "Loja"}
+                  className="h-32 w-32 rounded-xl border object-cover"
+                />
+              </div>
+            ) : null}
             <div className="space-y-2">
               <label className="text-sm font-medium">Selecione uma imagem</label>
               <input
@@ -445,6 +509,11 @@ const Stores = () => {
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">Arquivo selecionado: {selectedImageFile.name}</p>
                 <div className="text-xs text-gray-600">Tamanho: {(selectedImageFile.size / 1024).toFixed(2)} KB</div>
+                {selectedImagePreviewUrl ? <img
+                    src={selectedImagePreviewUrl}
+                    alt="Pré-visualização"
+                    className="h-32 w-32 rounded-xl border object-cover"
+                  /> : null}
               </div>
             )}
 
@@ -454,7 +523,7 @@ const Stores = () => {
                 disabled={!selectedImageFile || uploadingImageForStoreId == null}
                 onClick={() => void handleUploadStoreImage(uploadingImageForStoreId)}
               >
-                {uploadingImageForStoreId != null && uploadingImageForStoreId === uploadingImageForStoreId ? "A carregar..." : "Guardar Imagem"}
+                Guardar Imagem
               </Button>
               <Button
                 variant="secondary"
