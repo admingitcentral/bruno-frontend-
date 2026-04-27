@@ -23,6 +23,8 @@
 
 .hero-carousel {
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .hero-carousel .swiper-pagination {
@@ -41,15 +43,56 @@
   font-size: 24px;
 }
 
-.mySwiper{
-  padding:20px;
+.mySwiper {
+  /* Tighter on small phones; room for arrows on sm+ */
+  padding: 16px 12px;
 }
 
-.ana-dias-swiper{
-  padding:50px;
-
+@media (min-width: 640px) {
+  .mySwiper {
+    padding: 20px 24px;
+  }
 }
 
+@media (min-width: 1024px) {
+  .mySwiper {
+    padding: 20px 32px;
+  }
+}
+
+/* Community / lifestyle row: same gutter nav as product carousels; no extra full-width padding
+   (horizontal inset comes from .mySwiper--product-nav). */
+.ana-dias-swiper {
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.ana-dias-swiper .swiper-button-next,
+.ana-dias-swiper .swiper-button-prev {
+  color: #000;
+}
+
+.mySwiper--community.mySwiper--product-nav {
+  /* portrait slides: keep chevrons vertically centered on the image strip */
+  --swiper-navigation-top-offset: 42%;
+}
+
+@media (min-width: 1024px) {
+  .mySwiper--community.mySwiper--product-nav {
+    --swiper-navigation-top-offset: 40%;
+  }
+}
+
+.mySwiper--community.ana-dias-swiper {
+  /* slightly more vertical room for pagination under tall portrait slides */
+  padding-bottom: 2.5rem;
+}
+
+@media (min-width: 1024px) {
+  .mySwiper--community.ana-dias-swiper {
+    padding-bottom: 2.75rem;
+  }
+}
 
 /* .mySwiper .swiper-pagination{
   bottom: -12px;
@@ -60,9 +103,27 @@
   color: #000;
 }
 
-.ana-dias-swiper .swiper-button-next,
-.ana-dias-swiper .swiper-button-prev{
-  color: #000;
+/* Product carousels: nav sits in side gutters, not on the images. Large horizontal padding
+   insets the slide track; small sides-offset holds arrows near the outer edge of the swiper. */
+.mySwiper--product-nav {
+  /* ≥ nav width (40px) + small outer gap — keeps chevrons in the margin strip */
+  padding: 16px 2.75rem 16px 2.75rem; /* 44px L/R; overrides .mySwiper 12/24/32 */
+  --swiper-navigation-sides-offset: 4px;
+  --swiper-navigation-top-offset: 40%;
+  --swiper-navigation-size: 40px;
+  box-sizing: border-box;
+}
+@media (min-width: 640px) {
+  .mySwiper--product-nav {
+    padding: 20px 3rem 20px 3rem; /* 48px L/R */
+    --swiper-navigation-top-offset: 36%;
+  }
+}
+@media (min-width: 1024px) {
+  .mySwiper--product-nav {
+    padding: 20px 3.25rem 20px 3.25rem; /* 52px L/R */
+    --swiper-navigation-top-offset: 32%;
+  }
 }
 
 .category-card-bg{

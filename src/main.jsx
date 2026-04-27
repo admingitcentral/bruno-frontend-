@@ -15,6 +15,7 @@ import ThankuMessagePage from './ThankuMessagePage.jsx'
 import ContactPage from './ContactPage.jsx'
 import AboutUsPage from './AboutUsPage.jsx'
 import CmsPage from './CmsPage.jsx'
+import SearchPage from './SearchPage.jsx'
 
 import { AdminAuthProvider, useAdminAuth } from './admin/contexts/AdminAuthContext.jsx'
 import AdminLayout from './admin/components/admin/AdminLayout.jsx'
@@ -118,6 +119,7 @@ createRoot(document.getElementById('root')).render(
           </Route>
         </Route>
 
+        <Route path='/search' element={<SearchPage />} />
         <Route path='/products' element={<ProductsPage />} />
         <Route path='/productDetails/:id' element={<ProductDetailsPage />} />
         <Route path='/productDetails' element={<ProductDetailsPage />} />

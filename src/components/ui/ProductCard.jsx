@@ -29,7 +29,7 @@ const ProductCard = ({
             {stockLabel}
           </span>
         ) : null}
-        <img src={image} alt={title} className='w-full' />
+        <img src={image} alt={title} className='h-auto w-full max-w-full min-w-0' />
       </div>
       <div className='flex justify-between w-full text-[12px]'>
         <div className='min-w-0'>
@@ -48,13 +48,13 @@ const ProductCard = ({
 
   if (to) {
     return (
-      <Link to={to} className='block w-full pb-12 cursor-pointer' aria-label={`Open ${title}`}>
+      <Link to={to} className='block w-full min-w-0 max-w-full cursor-pointer pb-8 sm:pb-12' aria-label={`Open ${title}`}>
         {cardContent}
       </Link>
     )
   }
 
-  return <div className='w-full pb-12'>{cardContent}</div>
+  return <div className='w-full min-w-0 max-w-full pb-8 sm:pb-12'>{cardContent}</div>
 }
 
 export default ProductCard

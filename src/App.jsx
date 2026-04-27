@@ -31,6 +31,10 @@ import fallbackProductImage from './assets/product-card-test-image.png'
 import { getJson, resolveAssetUrl } from './lib/api'
 import { THEME_UPDATED_EVENT } from './lib/theme'
 
+/** Section width: fluid padding, max 1400px; min-w-0 lets flex children shrink on narrow viewports */
+const homeSectionWidth =
+  'mx-auto w-full min-w-0 max-w-[1400px] px-3 sm:px-5 md:px-8 lg:px-12 xl:px-[72px]'
+
 const fallbackStoreImages = [StoreFaro, StoreLisboa, StoreMatosinhos]
 
 const fallbackProducts = Array.from({ length: 10 }, (_, index) => ({
@@ -73,21 +77,21 @@ const brandLogos = [
 const benefits = [
   {
     icon: benefitShipping,
-    title: 'Envios Rapidos e Fiaveis',
+    title: 'Envios Rápidos e Fiáveis',
     description:
       'Encomendas expedidas em 24/48h para Portugal Continental, com tracking e acompanhamento em tempo real.',
   },
   {
     icon: benefitReturns,
-    title: 'Trocas e Devolucoes Simples',
+    title: 'Trocas e Devoluções Simples',
     description:
-      'Processo de trocas e devolucoes claro, rapido e sem complicacoes, porque a tua satisfacao vem primeiro.',
+      'Processo de trocas e devoluções claro, rápido e sem complicações, porque a tua satisfação vem primeiro.',
   },
   {
     icon: benefitSecure,
     title: 'Compra Segura e Transparente',
     description:
-      'Pagamentos seguros, precos claros e informacao detalhada em todos os produtos, sem surpresas.',
+      'Pagamentos seguros, preços claros e informação detalhada em todos os produtos, sem surpresas.',
   },
 ]
 const LOW_STOCK_THRESHOLD = 5
@@ -734,7 +738,10 @@ function App() {
   return (
     <>
       <Navbar />
-      <div className='flex flex-col' data-theme-layout-root='home'>
+      <div
+        className='flex w-full min-w-0 max-w-[100%] flex-col overflow-x-clip [padding-bottom:env(safe-area-inset-bottom)]'
+        data-theme-layout-root='home'
+      >
 
       {isSectionEnabled('hero') ? (
         <section className='bg-white' style={{ order: sectionOrder.hero }} data-theme-layout-section='hero'>
@@ -751,15 +758,15 @@ function App() {
               {heroCarouselImages.map((image, index) => (
                 <SwiperSlide key={index}>
                   <div className='hero-bg min-h-[72svh] md:h-[90vh]' style={{ backgroundImage: `url(${resolveAssetUrl(image.url)})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
-                    <div className='flex min-h-[72svh] w-full max-w-[640px] flex-col justify-center px-6 py-14 text-white md:ml-[10%] md:h-[90vh] md:px-0'>
-                      <h1 className='text-[32px] leading-tight md:text-[46px]' data-theme-edit='public_home_content.hero_title'>
+                    <div className='flex min-h-[72svh] w-full min-w-0 max-w-full flex-col justify-center px-4 py-10 text-white sm:px-6 sm:py-12 md:ml-[4%] md:min-h-0 md:h-[90vh] md:max-w-[min(100%,40rem)] md:px-5 md:py-14 lg:ml-[8%] xl:ml-[10%] xl:px-0'>
+                      <h1 className='text-balance text-[1.6rem] leading-tight sm:text-3xl md:text-[2.2rem] lg:text-[2.75rem]' data-theme-edit='public_home_content.hero_title'>
                         {homeContent.hero_title}
                       </h1>
-                      <p className='w-full py-4 text-[14px] md:w-9/12' data-theme-edit='public_home_content.hero_body'>
+                      <p className='w-full min-w-0 max-w-2xl py-3 text-sm sm:py-4 sm:text-[15px] md:w-9/12' data-theme-edit='public_home_content.hero_body'>
                         {homeContent.hero_body}
                       </p>
                       <button
-                        className='w-full bg-primary py-3 text-primary-foreground sm:w-auto sm:min-w-[220px] md:w-6/12'
+                        className='w-full min-w-0 max-w-sm bg-primary py-3.5 text-primary-foreground sm:max-w-xs md:max-w-[50%]'
                         data-theme-edit='public_home_content.hero_cta_label'
                       >
                         {homeContent.hero_cta_label}
@@ -771,15 +778,15 @@ function App() {
             </Swiper>
           ) : (
             <div className='hero-bg min-h-[72svh] md:h-[90vh]' data-theme-image='public_home_hero_image' data-theme-image-label='Hero image'>
-              <div className='flex min-h-[72svh] w-full max-w-[640px] flex-col justify-center px-6 py-14 text-white md:ml-[10%] md:h-[90vh] md:px-0'>
-                <h1 className='text-[32px] leading-tight md:text-[46px]' data-theme-edit='public_home_content.hero_title'>
+              <div className='flex min-h-[72svh] w-full min-w-0 max-w-full flex-col justify-center px-4 py-10 text-white sm:px-6 sm:py-12 md:ml-[4%] md:min-h-0 md:h-[90vh] md:max-w-[min(100%,40rem)] md:px-5 md:py-14 lg:ml-[8%] xl:ml-[10%] xl:px-0'>
+                <h1 className='text-balance text-[1.6rem] leading-tight sm:text-3xl md:text-[2.2rem] lg:text-[2.75rem]' data-theme-edit='public_home_content.hero_title'>
                   {homeContent.hero_title}
                 </h1>
-                <p className='w-full py-4 text-[14px] md:w-9/12' data-theme-edit='public_home_content.hero_body'>
+                <p className='w-full min-w-0 max-w-2xl py-3 text-sm sm:py-4 sm:text-[15px] md:w-9/12' data-theme-edit='public_home_content.hero_body'>
                   {homeContent.hero_body}
                 </p>
                 <button
-                  className='w-full bg-primary py-3 text-primary-foreground sm:w-auto sm:min-w-[220px] md:w-6/12'
+                  className='w-full min-w-0 max-w-sm bg-primary py-3.5 text-primary-foreground sm:max-w-xs md:max-w-[50%]'
                   data-theme-edit='public_home_content.hero_cta_label'
                 >
                   {homeContent.hero_cta_label}
@@ -815,35 +822,37 @@ function App() {
 
       {isSectionEnabled('athlete') ? (
         <section
-          className='mt-[10vh] flex flex-col items-center'
+          className='mt-8 flex w-full min-w-0 flex-col items-center sm:mt-[10vh]'
           style={{ order: sectionOrder.athlete }}
           data-theme-layout-section='athlete'
         >
-          <div className='text-center'>
-            <h1 className='text-[24px]' data-theme-edit='public_home_content.athlete_title'>
+          <div className='w-full max-w-3xl px-3 text-center sm:px-4'>
+            <h1 className='text-balance text-xl sm:text-2xl' data-theme-edit='public_home_content.athlete_title'>
               {homeContent.athlete_title}
             </h1>
-            <p className='py-4' data-theme-edit='public_home_content.athlete_body'>
+            <p className='mt-2 py-2 text-sm text-[#333] sm:py-4 sm:text-base' data-theme-edit='public_home_content.athlete_body'>
               {homeContent.athlete_body}
             </p>
           </div>
 
-          <div className='w-[95vw] mx-auto'>
+          <div className={homeSectionWidth}>
             <Swiper
               slidesPerView={1}
               spaceBetween={12}
+              roundLengths
               preventClicks={false}
               preventClicksPropagation={false}
               breakpoints={{
                 640: { slidesPerView: 2, spaceBetween: 12 },
                 768: { slidesPerView: 3, spaceBetween: 12 },
-                1024: { slidesPerView: 5, spaceBetween: 6 },
+                1024: { slidesPerView: 5, spaceBetween: 8 },
               }}
               pagination={{ clickable: true }}
               navigation={true}
-              loop={true}
+              loop={false}
+              rewind
               modules={[Pagination, Navigation]}
-              className='mySwiper'
+              className='mySwiper mySwiper--product-nav'
             >
               {athleteProducts.map((product) => (
                 <SwiperSlide key={product.id} className=' flex gap-3'>
@@ -871,8 +880,8 @@ function App() {
       ) : null}
 
       {isSectionEnabled('categories') ? (
-      <section style={{ order: sectionOrder.categories }} data-theme-layout-section='categories'>
-        <h1 className='text-[24px] text-center' data-theme-edit='public_home_content.categories_title'>
+      <section className="w-full min-w-0" style={{ order: sectionOrder.categories }} data-theme-layout-section='categories'>
+        <h1 className='px-3 text-balance text-center text-xl sm:text-2xl' data-theme-edit='public_home_content.categories_title'>
           {homeContent.categories_title}
         </h1>
 
@@ -892,7 +901,7 @@ function App() {
   </Swiper>
 </div>
 
-<div className='hidden md:flex flex-wrap justify-center gap-4 mt-10'>
+<div className='mt-10 hidden w-full min-w-0 max-w-full flex-wrap justify-center gap-4 px-2 sm:px-0 md:flex md:px-0'>
   {categories.map((category) => (
     <CategoryCard key={category.id} {...category} />
   ))}
@@ -916,36 +925,37 @@ function App() {
 
       {isSectionEnabled('performance') ? (
       <section
-        className='mt-[10vh] flex flex-col items-center'
+        className='mt-8 flex w-full min-w-0 flex-col items-center sm:mt-[10vh]'
         style={{ order: sectionOrder.performance }}
         data-theme-layout-section='performance'
       >
-        <div className='text-center'>
-          <h1 className='text-[24px]' data-theme-edit='public_home_content.performance_title'>
+        <div className='w-full max-w-3xl px-3 text-center sm:px-4'>
+          <h1 className='text-balance text-xl sm:text-2xl' data-theme-edit='public_home_content.performance_title'>
             {homeContent.performance_title}
           </h1>
-          <p className='py-4' data-theme-edit='public_home_content.performance_body'>
+          <p className='mt-2 py-2 text-sm text-[#333] sm:py-4 sm:text-base' data-theme-edit='public_home_content.performance_body'>
             {homeContent.performance_body}
           </p>
         </div>
 
-        <div className='w-[95vw] mx-auto'>
+        <div className={homeSectionWidth}>
           <Swiper
             slidesPerView={1}
             spaceBetween={12}
+            roundLengths
             preventClicks={false}
             preventClicksPropagation={false}
             breakpoints={{
               640: { slidesPerView: 2, spaceBetween: 12 },
               768: { slidesPerView: 3, spaceBetween: 12 },
-              1024: { slidesPerView: 5, spaceBetween: 0 },
+              1024: { slidesPerView: 5, spaceBetween: 8 },
             }}
             pagination={{ clickable: true }}
             navigation={true}
-
-                  loop={true}
+            loop={false}
+            rewind
             modules={[Pagination, Navigation]}
-            className='mySwiper'
+            className='mySwiper mySwiper--product-nav'
           >
             {performanceProducts.map((product) => (
               <SwiperSlide key={`perf-${product.id}`}>
@@ -967,17 +977,18 @@ function App() {
       ) : null}
 
       {isSectionEnabled('promo') ? (
-      <section className='mt-[10vh]' style={{ order: sectionOrder.promo }} data-theme-layout-section='promo'>
-        <div className='promo-bg mx-auto flex min-h-[340px] w-[90vw] items-center justify-center md:h-[50vh]' data-theme-image='public_home_promo_image' data-theme-image-label='Promo image'>
-          <div className='px-6 py-8 text-center text-white sm:px-8'>
-            <h2 className='text-[28px] leading-tight md:text-[32px]' data-theme-edit='public_home_content.promo_title'>
+      <section className='mt-8 w-full min-w-0 sm:mt-[10vh]' style={{ order: sectionOrder.promo }} data-theme-layout-section='promo'>
+        <div className={`promo-bg flex min-h-[min(100svh,26rem)] items-center justify-center sm:min-h-[340px] md:h-[50vh] ${homeSectionWidth}`} data-theme-image='public_home_promo_image' data-theme-image-label='Promo image'>
+          <div className='w-full max-w-2xl px-4 py-8 text-center text-white sm:px-6 sm:py-10 md:px-8'>
+            <h2 className='text-balance text-xl leading-tight sm:text-2xl md:text-[32px]' data-theme-edit='public_home_content.promo_title'>
               {homeContent.promo_title}
             </h2>
-            <p className='py-3 text-[14px] md:text-[16px]' data-theme-edit='public_home_content.promo_body'>
+            <p className='mt-2 py-2 text-sm sm:py-3 sm:text-[15px] md:text-base' data-theme-edit='public_home_content.promo_body'>
               {homeContent.promo_body}
             </p>
             <button
-              className='bg-primary px-8 py-3 text-[13px] tracking-[2px] text-primary-foreground sm:px-10'
+              type="button"
+              className='mt-2 bg-primary px-6 py-3 text-xs tracking-widest text-primary-foreground sm:px-8 sm:text-[13px] sm:tracking-[2px] sm:px-10'
               data-theme-edit='public_home_content.promo_cta_label'
             >
               {homeContent.promo_cta_label}
@@ -988,12 +999,12 @@ function App() {
       ) : null}
 
       {isSectionEnabled('brands') ? (
-      <section className='mt-[10vh] mb-[10vh]' style={{ order: sectionOrder.brands }} data-theme-layout-section='brands'>
-        <h2 className='text-[32px] text-center mb-6' data-theme-edit='public_home_content.brands_title'>
+      <section className='mt-8 w-full min-w-0 sm:mb-[10vh] sm:mt-[10vh]' style={{ order: sectionOrder.brands }} data-theme-layout-section='brands'>
+        <h2 className='mb-4 px-3 text-center text-2xl sm:mb-6 sm:text-[32px]' data-theme-edit='public_home_content.brands_title'>
           {homeContent.brands_title}
         </h2>
 
-        <div className='w-[90vw] mx-auto md:hidden'>
+        <div className={`${homeSectionWidth} md:hidden`}>
   <Swiper
     slidesPerView={1}
     spaceBetween={12}
@@ -1011,9 +1022,9 @@ function App() {
   </Swiper>
 </div>
 
-<div className='hidden md:flex w-[90vw] mx-auto flex-wrap justify-between'>
+<div className={`hidden md:flex ${homeSectionWidth} flex-wrap items-center justify-center gap-6 lg:justify-between`}>
   {displayedBrands.map((brand) => (
-    <img key={brand.alt} src={brand.src} className="h-16" />
+    <img key={brand.alt} src={brand.src} alt={brand.alt} className="h-12 w-auto object-contain sm:h-14 md:h-16" />
   ))}
 </div>
       </section>
@@ -1021,7 +1032,7 @@ function App() {
 
       {isSectionEnabled('stores') ? (
       <section
-        className='mx-auto max-w-[1366px] px-5 sm:px-8 lg:px-[42px] py-[40px] sm:py-[55px] lg:py-[70px] text-center'
+        className='mx-auto w-full min-w-0 max-w-[1400px] px-3 py-8 text-center sm:px-5 sm:py-10 md:px-8 md:py-12 lg:px-12 lg:py-[70px] xl:px-[72px]'
         style={{ order: sectionOrder.stores }}
         data-theme-layout-section='stores'
       >
@@ -1032,7 +1043,7 @@ function App() {
           <span data-theme-edit='public_home_content.stores_body'>{homeContent.stores_body}</span>
         </p>
 
-        <div className='mx-auto mt-6 w-full max-w-[1180px]'>
+        <div className='mx-auto mt-6 w-full min-w-0 max-w-[min(100%,1180px)] px-0'>
           <Swiper
             slidesPerView={1}
             spaceBetween={16}
@@ -1058,32 +1069,39 @@ function App() {
 
       {isSectionEnabled('community') ? (
       <section
-        className='mt-[10vh] mb-[10vh] flex flex-col items-center'
+        className='mt-5 flex w-full min-w-0 flex-col items-center sm:mb-[10vh] sm:mt-[6.67vh]'
         style={{ order: sectionOrder.community }}
         data-theme-layout-section='community'
       >
-        <div className='text-center'>
-          <h2 className='text-[32px]' data-theme-edit='public_home_content.community_title'>
+        <div className='w-full max-w-3xl px-3 text-center sm:px-4'>
+          <h2 className='text-balance text-2xl sm:text-[32px]' data-theme-edit='public_home_content.community_title'>
             {homeContent.community_title}
           </h2>
-          <p className='py-3 text-[16px]' data-theme-edit='public_home_content.community_body'>
+          <p className='mt-1 py-2 text-sm sm:py-3 sm:text-base' data-theme-edit='public_home_content.community_body'>
             {homeContent.community_body}
           </p>
         </div>
-        <div className='w-[95vw] mx-auto'>
+        <div className={homeSectionWidth}>
           <Swiper
             slidesPerView={1}
             spaceBetween={12}
-            loop={true}
+            roundLengths
+            loop={false}
+            rewind
             grabCursor={true}
+            preventClicks={false}
+            preventClicksPropagation={false}
             breakpoints={{
-              640: { slidesPerView: 2, spaceBetween: 16 },
-              1024: { slidesPerView: 4, spaceBetween: 20 },
+              640: { slidesPerView: 2, spaceBetween: 12 },
+              768: { slidesPerView: 3, spaceBetween: 10 },
+              1024: { slidesPerView: 4, spaceBetween: 10 },
+              1280: { slidesPerView: 5, spaceBetween: 10 },
+              1536: { slidesPerView: 6, spaceBetween: 8 },
             }}
             pagination={{ clickable: true }}
             navigation={true}
             modules={[Pagination, Navigation]}
-            className='ana-dias-swiper'
+            className='ana-dias-swiper mySwiper mySwiper--product-nav mySwiper--community'
           >
             <SwiperSlide className='py-2'>
               <CommunityCard image={AnaDias1} alt='Ana Dias Run 1' />
@@ -1106,8 +1124,8 @@ function App() {
       ) : null}
 
       {isSectionEnabled('benefits') ? (
-      <section className='mt-[10vh] mb-[10vh]' style={{ order: sectionOrder.benefits }} data-theme-layout-section='benefits'>
-        <div className='w-[90vw] mx-auto md:hidden'>
+      <section className='mt-5 w-full min-w-0 sm:mb-[10vh] sm:mt-[6.67vh]' style={{ order: sectionOrder.benefits }} data-theme-layout-section='benefits'>
+        <div className={`${homeSectionWidth} md:hidden`}>
           <Swiper
             slidesPerView={1}
             spaceBetween={12}
@@ -1128,12 +1146,19 @@ function App() {
           </Swiper>
         </div>
 
-        <div className='hidden md:flex w-[90vw] mx-auto flex-wrap items-start justify-between gap-y-10 text-center'>
+        <div
+          className={`hidden ${homeSectionWidth} md:grid md:grid-cols-3 md:gap-8 md:text-center lg:gap-10`}
+        >
           {benefits.map((benefit) => (
-            <div key={`benefit-desktop-${benefit.title}`} className='w-full md:w-1/3 px-6'>
-              <img className='h-10 mx-auto mb-4' src={benefit.icon} alt={benefit.title} />
-              <h3 className='text-[14px] font-semibold'>{benefit.title}</h3>
-              <p className='text-[12px] mt-2'>{benefit.description}</p>
+            <div
+              key={`benefit-desktop-${benefit.title}`}
+              className='flex min-w-0 flex-col items-center text-center'
+            >
+              <img className='mb-4 h-10 w-auto' src={benefit.icon} alt='' />
+              <h3 className='text-[15px] font-semibold leading-snug'>{benefit.title}</h3>
+              <p className='mt-2 max-w-[22rem] text-[12px] leading-relaxed text-[#333] md:max-w-none'>
+                {benefit.description}
+              </p>
             </div>
           ))}
         </div>
@@ -1159,12 +1184,12 @@ function App() {
           return (
             <section
               key={key}
-              className='w-[90vw] mx-auto mt-16 rounded-2xl border border-black/10 bg-white p-6 md:p-10'
+              className={`${homeSectionWidth} mt-8 rounded-2xl border border-black/10 bg-white p-4 sm:mt-16 sm:p-6 md:p-10`}
               style={{ order: sectionOrder[key] || 9999 }}
               data-theme-layout-section={key}
             >
               {type === 'image' ? (
-                <div className='grid gap-6 lg:grid-cols-[1fr_1.2fr] lg:items-center'>
+                <div className='grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[1fr_1.2fr] lg:items-center'>
                   <div>
                     <h2 className='m-0 text-[28px] font-semibold' data-theme-edit={titleKey}>
                       {section?.title || 'New section'}

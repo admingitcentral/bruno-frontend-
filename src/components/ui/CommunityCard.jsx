@@ -2,8 +2,8 @@ import React from 'react'
 
 function CommunityCard({ image, alt }) {
   return (
-    <div className='w-full h-[240px] overflow-hidden'>
-      <img className='w-full h-full object-cover' src={image} alt={alt} />
+    <div className='w-full aspect-[2/3] overflow-hidden bg-neutral-100'>
+      <img className='h-full w-full object-cover object-center' src={image} alt={alt} />
     </div>
   )
 }

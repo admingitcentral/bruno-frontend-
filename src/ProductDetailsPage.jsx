@@ -4,7 +4,7 @@ import 'swiper/css'
 import 'swiper/css/pagination'
 import 'swiper/css/navigation'
 import { Pagination, Navigation } from 'swiper/modules'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import Navbar from './components/layout/Navbar'
 import Footer from './components/layout/Footer'
 import productImage from './assets/product-card-test-image.png'
@@ -15,28 +15,34 @@ import { getJson, resolveAssetUrl } from './lib/api'
 import { addCartItem } from './lib/cart'
 
 const LOW_STOCK_THRESHOLD = 5
-const COLOR_SWATCHES = [
-  { id: 'preto', label: 'Preto', color: '#111111' },
-  { id: 'azul', label: 'Azul', color: '#1f4f8f' },
-  { id: 'castanho', label: 'Castanho', color: '#9a5b2a' },
-  { id: 'verde', label: 'Verde', color: '#5f6b4f' },
-  { id: 'cinzento', label: 'Cinzento', color: '#d9d9d9', light: true },
-  { id: 'laranja', label: 'Laranja', color: '#d8892b' },
-  { id: 'rosa', label: 'Rosa', color: '#f0c7bd' },
-  { id: 'vermelho', label: 'Vermelho', color: '#c62828' },
-  { id: 'bege', label: 'Bege', color: '#b8a892' },
-]
 
-const colorAliasMap = {
-  preto: ['preto', 'preta', 'black', 'noir'],
-  azul: ['azul', 'blue', 'navy'],
-  castanho: ['castanho', 'marrom', 'brown'],
-  verde: ['verde', 'green'],
-  cinzento: ['cinzento', 'cinza', 'gris', 'grey', 'gray'],
-  laranja: ['laranja', 'orange'],
-  rosa: ['rosa', 'pink'],
-  vermelho: ['vermelho', 'red', 'rojo'],
-  bege: ['bege', 'beige'],
+/** Common PT/EN color tokens → hex for dynamic swatches when backend sends text only */
+const COLOR_LABEL_HEX_HINTS = {
+  preto: '#111111',
+  pret: '#111111',
+  black: '#111111',
+  azul: '#1f4f8f',
+  blue: '#1f4f8f',
+  navy: '#1a3a5c',
+  castanho: '#9a5b2a',
+  brown: '#9a5b2a',
+  marrom: '#6b4423',
+  verde: '#5f6b4f',
+  green: '#2e6b3f',
+  cinzento: '#c4c4c4',
+  cinza: '#b0b0b0',
+  grey: '#9e9e9e',
+  gray: '#9e9e9e',
+  laranja: '#d8892b',
+  orange: '#e65100',
+  rosa: '#f0c7bd',
+  pink: '#e8b4b4',
+  vermelho: '#c62828',
+  red: '#c62828',
+  bege: '#b8a892',
+  beige: '#c4b59d',
+  branco: '#f5f5f5',
+  white: '#f5f5f5',
 }
 
 function toNumber(value, fallback = 0) {
@@ -81,36 +87,95 @@ function normalizeText(value) {
     .trim()
 }
 
-function getColorTokens(colorId) {
-  const swatch = COLOR_SWATCHES.find((entry) => entry.id === colorId)
-  const key = normalizeText(swatch?.label || colorId)
-  return colorAliasMap[key] || [key]
+function hashStringToHex(input) {
+  let h = 0
+  const str = String(input || '')
+  for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h)
+  const c = (Math.abs(h) % 0xffffff).toString(16).padStart(6, '0')
+  return `#${c}`
 }
 
-function colorMatches(value, selectedColorId) {
-  const haystack = normalizeText(value)
-  if (!haystack) return false
-  return getColorTokens(selectedColorId).some((token) => haystack.includes(token))
-}
-
-function resolveColorId(value) {
-  const normalized = normalizeText(value)
-  if (!normalized) return ''
-
-  for (const swatch of COLOR_SWATCHES) {
-    const tokens = getColorTokens(swatch.id)
-    if (tokens.some((token) => normalized.includes(token) || token.includes(normalized))) {
-      return swatch.id
-    }
+function colorHexFromLabel(label) {
+  const n = normalizeText(label)
+  if (!n) return '#6b7280'
+  for (const [key, hex] of Object.entries(COLOR_LABEL_HEX_HINTS)) {
+    if (n.includes(key)) return hex
   }
-
-  return ''
+  return hashStringToHex(n)
 }
 
-function pickImageByColor(imageOptions, selectedColorId) {
+function luminanceApprox(hex) {
+  const m = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex || '')
+  if (!m) return 0.5
+  const r = parseInt(m[1], 16) / 255
+  const g = parseInt(m[2], 16) / 255
+  const b = parseInt(m[3], 16) / 255
+  return 0.299 * r + 0.587 * g + 0.114 * b
+}
+
+function isLightHex(hex) {
+  return luminanceApprox(hex) > 0.62
+}
+
+function sortSizeLabels(sizes) {
+  return [...new Set(sizes.map((s) => String(s).trim()).filter(Boolean))].sort((a, b) => {
+    const na = Number(String(a).replace(',', '.'))
+    const nb = Number(String(b).replace(',', '.'))
+    if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb
+    return String(a).localeCompare(String(b), 'pt', { numeric: true })
+  })
+}
+
+/** Match gallery/alt text to selected color (from admin images + variant color label). */
+function pickImageByColor(imageOptions, selectedColorId, colorLabel) {
   if (!Array.isArray(imageOptions) || imageOptions.length === 0) return ''
-  const match = imageOptions.find((item) => colorMatches(item.searchText, selectedColorId))
+  const idn = normalizeText(selectedColorId)
+  const lab = normalizeText(colorLabel)
+  const match = imageOptions.find((item) => {
+    const h = normalizeText(item.searchText)
+    if (idn && h.includes(idn)) return true
+    if (lab) {
+      if (h.includes(lab)) return true
+      const parts = lab.split(/\s+/).filter((w) => w.length > 2)
+      return parts.some((p) => h.includes(p))
+    }
+    return false
+  })
   return match?.url || ''
+}
+
+function buildDynamicColorSwatches(variantOptions, imageOptions) {
+  const labels = [...new Set(variantOptions.map((v) => v.colorLabel).filter(Boolean))]
+  return labels.map((label) => {
+    const id = normalizeText(label) || `c-${label}`
+    const hex = colorHexFromLabel(label)
+    const thumbUrl =
+      (imageOptions || []).find((item) => {
+        const h = normalizeText(item.searchText)
+        const lb = normalizeText(label)
+        if (!lb) return false
+        if (h.includes(lb)) return true
+        return lb
+          .split(/\s+/)
+          .filter((w) => w.length > 2)
+          .some((w) => h.includes(w))
+      })?.url || ''
+    return {
+      id,
+      label,
+      color: hex,
+      light: isLightHex(hex),
+      available: true,
+      thumbUrl,
+    }
+  })
+}
+
+function readAttrValue(raw) {
+  if (raw == null) return ''
+  if (Array.isArray(raw)) return String(raw[0] ?? '').trim()
+  if (typeof raw === 'object') return String(Object.values(raw)[0] ?? '').trim()
+  return String(raw).trim()
 }
 
 function extractColorFromAttributes(attributes) {
@@ -119,7 +184,7 @@ function extractColorFromAttributes(attributes) {
     const normalizedKey = normalizeText(key)
     return normalizedKey.includes('cor') || normalizedKey.includes('color')
   })
-  return String(found?.[1] || '').trim()
+  return readAttrValue(found?.[1])
 }
 
 function extractSizeFromAttributes(attributes) {
@@ -128,7 +193,7 @@ function extractSizeFromAttributes(attributes) {
     const normalizedKey = normalizeText(key)
     return normalizedKey.includes('size') || normalizedKey.includes('tamanho')
   })
-  return String(found?.[1] || '').trim()
+  return readAttrValue(found?.[1])
 }
 
 function mapProductForDetails(product, index = 0) {
@@ -149,6 +214,7 @@ function mapProductForDetails(product, index = 0) {
     const attrs = parseAttributes(variant?.attribute_values)
     const colorLabel = extractColorFromAttributes(attrs)
     const sizeLabel = extractSizeFromAttributes(attrs)
+    const colorId = normalizeText(colorLabel) || ''
     return {
       id: variant?.id != null ? String(variant.id) : null,
       sku: variant?.sku || product?.sku || null,
@@ -156,36 +222,26 @@ function mapProductForDetails(product, index = 0) {
       price: toNumber(variant?.price ?? product?.base_price, 0),
       compareAt: toNumber(variant?.compare_at_price, 0),
       colorLabel,
-      colorId: resolveColorId(colorLabel),
+      colorId,
       sizeLabel,
       attributes: attrs,
     }
   })
 
+  const dynamicColors = buildDynamicColorSwatches(variantOptions, imageOptions)
   const colorFromActiveVariant =
     variantOptions.find((variant) => variant.isActive && variant.colorId)?.colorId ||
     variantOptions.find((variant) => variant.colorId)?.colorId ||
     ''
-  const colorFromImages = COLOR_SWATCHES.find((swatch) =>
-    imageOptions.some((item) => colorMatches(item.searchText, swatch.id))
-  )?.id
-  const defaultColorId = colorFromActiveVariant || colorFromImages || COLOR_SWATCHES[0].id
-  const swatchesWithAvailability = COLOR_SWATCHES.map((swatch) => ({
-    ...swatch,
-    available:
-      variantOptions.some((variant) => variant.colorId === swatch.id) ||
-      imageOptions.some((item) => colorMatches(item.searchText, swatch.id)),
-  }))
-  const visibleColors = swatchesWithAvailability.filter((swatch) => swatch.available)
-  const fallbackColor =
-    swatchesWithAvailability.find((swatch) => swatch.id === defaultColorId) || swatchesWithAvailability[0]
-  const visibleSizes = Array.from(
-    new Set(
-      variantOptions
-        .map((variant) => String(variant.sizeLabel || '').trim())
-        .filter(Boolean)
-    )
+  const defaultColorId = colorFromActiveVariant || dynamicColors[0]?.id || ''
+  const visibleSizes = sortSizeLabels(
+    variantOptions.map((variant) => String(variant.sizeLabel || '').trim()).filter(Boolean)
   )
+  const galleryImages = (images.length > 0 ? images : [productImage]).slice(0, 4)
+  const primaryThumb =
+    pickImageByColor(imageOptions, defaultColorId, dynamicColors.find((c) => c.id === defaultColorId)?.label) ||
+    images[0] ||
+    productImage
 
   return {
     id: String(product?.id || `fallback-${index}`),
@@ -200,15 +256,16 @@ function mapProductForDetails(product, index = 0) {
       'Produto sem descricao detalhada no momento.',
     price,
     compareAt,
-    images: images.length > 0 ? images : [productImage, productImage, productImage, productImage],
+    images,
+    galleryImages,
     imageOptions,
     variantOptions,
     defaultColorId,
     defaultSize: visibleSizes[0] || '',
-    colors: visibleColors.length > 0 ? visibleColors : fallbackColor ? [fallbackColor] : [],
+    colors: dynamicColors,
     sizes: visibleSizes,
-    cardColor: COLOR_SWATCHES.find((swatch) => swatch.id === defaultColorId)?.label || 'Cor disponivel',
-    image: pickImageByColor(imageOptions, defaultColorId) || images[0] || productImage,
+    cardColor: dynamicColors.find((c) => c.id === defaultColorId)?.label || 'Cor disponivel',
+    image: primaryThumb,
   }
 }
 
@@ -230,8 +287,12 @@ function ProductDetailsPage() {
       try {
         setLoading(true)
         setError('')
-        const [productsResponse, stockSummaryResponse] = await Promise.allSettled([
+        const routeId = String(id || '').trim()
+        const [productsResponse, singleResponse, stockSummaryResponse] = await Promise.allSettled([
           getJson('/api/products'),
+          routeId
+            ? getJson(`/api/products/${encodeURIComponent(routeId)}`)
+            : Promise.resolve(null),
           getJson(`/api/orders/dashboard/summary?threshold=${LOW_STOCK_THRESHOLD}&limit=2000`),
         ])
         if (!active) return
@@ -250,26 +311,42 @@ function ProductDetailsPage() {
           }
         }
 
-        const mapped =
+        const listRaw =
           productsResponse.status === 'fulfilled' && Array.isArray(productsResponse.value)
-            ? productsResponse.value.map((entry, index) => {
-                const item = mapProductForDetails(entry, index)
+            ? productsResponse.value
+            : []
+        const mapped = listRaw.map((entry, index) => {
+          const item = mapProductForDetails(entry, index)
+          const dbStock = lowStockMap.get(String(item.id || '').trim())
+          return dbStock == null ? item : { ...item, stockLabel: createStockLabel(dbStock) }
+        })
+
+        const fromSingle =
+          singleResponse.status === 'fulfilled' &&
+          singleResponse.value &&
+          typeof singleResponse.value === 'object' &&
+          !Array.isArray(singleResponse.value) &&
+          singleResponse.value.id != null
+            ? (() => {
+                const item = mapProductForDetails(singleResponse.value, 0)
                 const dbStock = lowStockMap.get(String(item.id || '').trim())
                 return dbStock == null ? item : { ...item, stockLabel: createStockLabel(dbStock) }
-              })
-            : []
-        if (mapped.length === 0) {
+              })()
+            : null
+
+        let current =
+          fromSingle ||
+          mapped.find((item) => String(item.id) === routeId) ||
+          mapped.find((item) => encodeURIComponent(String(item.id)) === routeId) ||
+          mapped[0] ||
+          null
+
+        if (!current) {
           setProduct(null)
           setRecommended([])
           setError('No products available.')
           return
         }
-
-        const routeId = String(id || '').trim()
-        const current =
-          mapped.find((item) => String(item.id) === routeId) ||
-          mapped.find((item) => encodeURIComponent(String(item.id)) === routeId) ||
-          mapped[0]
 
         setProduct(current)
         setRecommended(mapped.filter((item) => item.id !== current.id).slice(0, 10))
@@ -307,14 +384,15 @@ function ProductDetailsPage() {
       if (!selectedColor) return true
       return !entry.colorId || entry.colorId === selectedColor
     })
-    const sizes = Array.from(
+    const raw = Array.from(
       new Set(
         matchingColorVariants
           .map((entry) => String(entry.sizeLabel || '').trim())
           .filter(Boolean)
       )
     )
-    return sizes.length > 0 ? sizes : product.sizes || []
+    const merged = raw.length > 0 ? raw : product.sizes || []
+    return sortSizeLabels(merged)
   }, [product, selectedColor])
 
   useEffect(() => {
@@ -341,19 +419,28 @@ function ProductDetailsPage() {
   }, [product, selectedColor, selectedSize])
 
   const selectedColorEntry = useMemo(
-    () => (product?.colors || COLOR_SWATCHES).find((entry) => entry.id === selectedColor) || null,
+    () => (product?.colors || []).find((entry) => entry.id === selectedColor) || null,
     [product, selectedColor]
   )
 
   const activePrice = selectedVariant?.price ?? product?.price ?? 0
   const activeCompareAt = selectedVariant?.compareAt ?? product?.compareAt ?? 0
   const hasDiscount = Boolean(product && activeCompareAt > activePrice)
+  const discountPct =
+    hasDiscount && activeCompareAt > 0
+      ? Math.round(((activeCompareAt - activePrice) / activeCompareAt) * 100)
+      : 0
 
   const selectedImage = useMemo(() => {
     if (!product) return productImage
-    const matched = (product.imageOptions || []).find((item) => colorMatches(item.searchText, selectedColor))?.url
-    return matched || product.images?.[0] || productImage
-  }, [product, selectedColor])
+    const label = selectedColorEntry?.label
+    return (
+      pickImageByColor(product.imageOptions || [], selectedColor, label) ||
+      product.galleryImages?.[0] ||
+      product.images?.[0] ||
+      productImage
+    )
+  }, [product, selectedColor, selectedColorEntry])
 
   const handleAddToCart = () => {
     if (!product) return
@@ -382,93 +469,174 @@ function ProductDetailsPage() {
     <>
       <Navbar />
       <div className='flex flex-col' data-theme-layout-root='product-details'>
-      <section className='mb-[10vh] mt-[4vh] px-4 sm:px-0' data-theme-layout-section='details'>
-        <div className='mx-auto grid w-full max-w-[1240px] grid-cols-1 gap-8 sm:w-[90vw] lg:grid-cols-[1.2fr_0.8fr] lg:gap-10'>
-          <div className='flex items-center justify-center overflow-hidden rounded-2xl border border-black/5 bg-white'>
-            <img src={selectedImage} alt={product?.title || 'Product image'} className='w-full object-cover' />
+      <section
+        className='mb-[8vh] mt-[2vh] min-w-0 px-3 pb-6 sm:mt-[3vh] sm:px-4 md:px-6 [padding-bottom:max(1.5rem,env(safe-area-inset-bottom,0))]'
+        data-theme-layout-section='details'
+      >
+        <div className='mx-auto grid w-full min-w-0 max-w-[1240px] grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-10 xl:gap-12'>
+          <div className='min-w-0'>
+            <div className='grid grid-cols-2 gap-1 sm:gap-1.5 md:gap-2'>
+              {[0, 1, 2, 3].map((i) => {
+                const gallery = !product
+                  ? [productImage]
+                  : product.galleryImages?.length
+                    ? product.galleryImages
+                    : [productImage]
+                const url = gallery[i] || null
+                return (
+                  <div
+                    key={i}
+                    className='relative aspect-square min-h-0 min-w-0 overflow-hidden bg-[#f5f5f5]'
+                  >
+                    {i === 0 && hasDiscount && discountPct > 0 ? (
+                      <span className='absolute left-2 top-2 z-10 text-[11px] font-semibold text-red-600 sm:left-2.5 sm:top-2.5 sm:text-[12px]'>
+                        {discountPct}% off
+                      </span>
+                    ) : null}
+                    {url ? (
+                      <img
+                        src={url}
+                        alt=''
+                        className='h-full w-full object-contain sm:object-cover'
+                        loading={i === 0 ? 'eager' : 'lazy'}
+                      />
+                    ) : null}
+                  </div>
+                )
+              })}
+            </div>
           </div>
 
-          <div className='min-w-0'>
-            <p className='text-[12px] text-black/60'>Sapatilhas | {product?.category || 'Categoria'}</p>
-            <div className='mt-2 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
-              <h1 className='text-[24px] font-semibold leading-tight sm:max-w-[70%]'>{product?.title || 'Produto'}</h1>
-              <div className='flex flex-wrap gap-3 text-left sm:justify-end sm:text-right'>
-                {hasDiscount ? <p className='text-[20px] line-through text-black/40 sm:text-[24px]'>{formatPrice(activeCompareAt)}</p> : null}
-                <p className='text-[22px] font-semibold sm:text-[24px]'>{formatPrice(activePrice)}</p>
+          <div className='min-w-0 lg:pl-0'>
+            <p className='text-[11px] uppercase tracking-[0.18em] text-black/50 sm:text-[12px] sm:tracking-[0.2em]'>
+              {product?.categoryId ? (
+                <Link
+                  to={`/products?categoryId=${encodeURIComponent(String(product.categoryId))}&categoryName=${encodeURIComponent(String(product?.category || ''))}`}
+                  className='transition hover:text-black'
+                >
+                  {product?.category || 'Categoria'}
+                </Link>
+              ) : (
+                <span>{product?.category || 'Categoria'}</span>
+              )}
+            </p>
+            <div className='mt-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
+              <h1 className='text-balance text-[1.35rem] font-semibold leading-tight sm:max-w-[75%] sm:text-2xl md:text-[1.75rem]'>
+                {product?.title || 'Produto'}
+              </h1>
+              <div className='flex flex-wrap items-baseline gap-2 text-left sm:justify-end sm:text-right md:flex-col md:items-end'>
+                {hasDiscount ? (
+                  <p className='text-[1.1rem] leading-none text-black/40 line-through sm:text-[1.15rem]'>
+                    {formatPrice(activeCompareAt)}
+                  </p>
+                ) : null}
+                <p className='text-[1.35rem] font-semibold leading-none sm:text-2xl'>{formatPrice(activePrice)}</p>
               </div>
             </div>
 
-            {loading ? <p className='mt-3 text-[12px] text-black/60'>Loading product details...</p> : null}
+            {loading ? <p className='mt-3 text-[12px] text-black/60'>A carregar…</p> : null}
             {error ? <p className='mt-3 text-[12px] text-red-600'>{error}</p> : null}
 
             <div className='mt-6'>
-              <div className='flex items-center justify-between'>
-                <span className='text-[12px] font-semibold'>Tamanhos</span>
-                <button className='text-[11px] text-black/60'>Guia de Tamanhos</button>
+              <div className='flex items-center justify-between gap-2'>
+                <span className='text-[12px] font-bold text-black'>Tamanho</span>
+                <button type='button' className='shrink-0 text-[11px] text-black/55 underline [touch-action:manipulation]'>
+                  Guia de Tamanhos
+                </button>
               </div>
-              <div className='mt-3 grid grid-cols-3 gap-2 text-[11px] sm:grid-cols-4 lg:grid-cols-6'>
+              <div className='mt-3 grid grid-cols-4 gap-1.5 text-center text-[12px] sm:grid-cols-6 sm:gap-2 sm:text-[13px]'>
                 {availableSizes.length > 0 ? (
                   availableSizes.map((size) => (
                     <button
                       key={size}
                       type='button'
                       onClick={() => setSelectedSize(size)}
-                      className={`border py-2 ${selectedSize === size ? 'border-primary bg-primary text-primary-foreground' : 'border-black/10 focus:bg-primary focus:text-primary-foreground focus:border-primary'}`}
+                      className={`min-h-10 min-w-0 border py-2 [touch-action:manipulation] sm:min-h-0 ${
+                        selectedSize === size
+                          ? 'border-black bg-black text-white'
+                          : 'border-black/20 bg-white text-black hover:border-black/50'
+                      }`}
                     >
                       {size}
                     </button>
                   ))
                 ) : (
-                  <p className='col-span-6 text-[12px] text-black/50'>Sem tamanhos disponiveis para este produto.</p>
+                  <p className='col-span-full text-left text-[12px] text-black/50'>
+                    Sem tamanhos — configure variantes no admin.
+                  </p>
                 )}
               </div>
             </div>
 
-            <div className='mt-6'>
-              <span className='text-[12px] font-semibold'>Cor</span>
-              <div className='mt-3 grid grid-cols-3 sm:grid-cols-5 gap-3 max-w-[360px]'>
-                {(product?.colors || []).map((c) => (
-                  <button
-                    key={c.id}
-                    type='button'
-                    onClick={() => setSelectedColor(c.id)}
-                    className='group flex flex-col items-center gap-1 outline-none'
-                    aria-label={`Cor ${c.label}`}
-                  >
-                    <span
-                      className={`h-6 w-6 rounded-full transition-shadow ${
-                        selectedColor === c.id
-                          ? 'ring-2 ring-black ring-offset-2 ring-offset-white'
-                          : c.light
-                            ? 'ring-1 ring-black/10'
-                            : ''
-                      } ${c.available ? '' : 'opacity-45'} group-focus-visible:ring-2 group-focus-visible:ring-black group-focus-visible:ring-offset-2 group-focus-visible:ring-offset-white`}
-                      style={{ backgroundColor: c.color }}
-                    />
-                    <span className={`text-[11px] ${selectedColor === c.id ? 'font-semibold' : 'text-black/70'} ${c.available ? '' : 'opacity-50'}`}>
-                      {c.label}
-                    </span>
-                  </button>
-                ))}
+            {(product?.colors || []).length > 0 ? (
+              <div className='mt-6'>
+                <span className='text-[12px] font-bold text-black'>Cor</span>
+                <div className='mt-3 flex flex-wrap gap-2.5 sm:gap-3'>
+                  {(product?.colors || []).map((c) => (
+                    <button
+                      key={c.id}
+                      type='button'
+                      onClick={() => setSelectedColor(c.id)}
+                      className='group flex flex-col items-center gap-1.5 outline-none [touch-action:manipulation]'
+                      aria-label={`Cor ${c.label}`}
+                    >
+                      {c.thumbUrl ? (
+                        <span
+                          className={`h-12 w-12 overflow-hidden rounded-sm border bg-white sm:h-14 sm:w-14 ${
+                            selectedColor === c.id ? 'ring-2 ring-black ring-offset-2' : 'border-black/20'
+                          }`}
+                        >
+                          <img src={c.thumbUrl} alt='' className='h-full w-full object-cover' />
+                        </span>
+                      ) : (
+                        <span
+                          className={`h-8 w-8 rounded-sm border transition ${
+                            selectedColor === c.id
+                              ? 'ring-2 ring-black ring-offset-2'
+                              : c.light
+                                ? 'border-black/25'
+                                : 'border-black/20'
+                          }`}
+                          style={{ backgroundColor: c.color }}
+                        />
+                      )}
+                      <span
+                        className={`max-w-[4.5rem] truncate text-center text-[10px] sm:max-w-[5rem] sm:text-[11px] ${
+                          selectedColor === c.id ? 'font-semibold text-black' : 'text-black/70'
+                        }`}
+                      >
+                        {c.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            ) : null}
 
-            <div className='mt-6 flex max-w-[220px] items-center justify-between rounded-md border border-black/10'>
-              <button className='px-4 py-2 text-[14px]' onClick={() => setQuantity((q) => Math.max(1, q - 1))}>
+            <div className='mt-6 flex max-w-[200px] items-stretch justify-between rounded border border-black/20 sm:max-w-[220px]'>
+              <button
+                type='button'
+                className='min-h-11 min-w-11 text-[1.1rem] [touch-action:manipulation] sm:min-h-0 sm:px-4 sm:py-2'
+                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+              >
                 -
               </button>
-              <span className='text-[12px]'>{quantity}</span>
-              <button className='px-4 py-2 text-[14px]' onClick={() => setQuantity((q) => q + 1)}>
+              <span className='flex min-w-8 items-center justify-center text-[13px] font-medium'>{quantity}</span>
+              <button
+                type='button'
+                className='min-h-11 min-w-11 text-[1.1rem] [touch-action:manipulation] sm:min-h-0 sm:px-4 sm:py-2'
+                onClick={() => setQuantity((q) => q + 1)}
+              >
                 +
               </button>
             </div>
 
             <button
-              className='mt-4 w-full bg-primary text-primary-foreground py-3 text-[12px] tracking-[2px]'
+              className='mt-5 w-full bg-black py-3.5 text-[12px] font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-black/90 sm:tracking-[0.2em]'
               onClick={handleAddToCart}
               type='button'
             >
-              ADICIONAR AO CARRINHO
+              Comprar
             </button>
 
             <div className='mt-6 space-y-4 text-[12px]'>
